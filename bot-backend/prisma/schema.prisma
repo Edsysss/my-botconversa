@@ -1,0 +1,109 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["bot_conversa"]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+// 1. O FLUXO DE VENDAS
+model Flow {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  nodes    Node[]
+  edges    Edge[]
+  triggers Trigger[]
+  sessions ContactSession[]
+  events   NodeEvent[]
+
+  @@schema("bot_conversa")
+}
+
+// 2. OS BLOSCOS/ETAPAS (REACT FLOW)
+model Node {
+  id             String   @id @default(uuid())
+  flowId         String
+  type           String
+  positionX      Float
+  positionY      Float
+  data           Json
+  executionCount Int      @default(0) // O nosso novo contador!
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  flow   Flow        @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  events NodeEvent[] // 👈 Adicione esta linha para resolver o erro P1012!
+
+  @@schema("bot_conversa")
+}
+
+// 3. AS CONEXÕES ENTRE BLOSCOS
+model Edge {
+  id           String  @id @default(uuid())
+  flowId       String
+  flow         Flow    @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  sourceNodeId String
+  targetNodeId String
+  sourceHandle String? // Ex: "on_reply", "on_timeout" (bolinha verde vs vermelha)
+
+  @@schema("bot_conversa")
+}
+
+// 4. GATILHOS DE ENTRADA
+model Trigger {
+  id     String  @id @default(uuid())
+  flowId String
+  flow   Flow    @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  type   String  // "EXACT", "CONTAINS", "CATCH_ALL"
+  value  String? // Ex: "comprar", "link"
+
+  @@schema("bot_conversa")
+}
+
+// 5. SESSÃO E MÁQUINA DE ESTADO DO CLIENTE
+enum SessionStatus {
+  ACTIVE
+  WAITING_REPLY
+  PAUSED
+
+  @@schema("bot_conversa")
+}
+
+model ContactSession {
+  id              String        @id @default(uuid())
+  phone           String        @unique
+  flowId          String?
+  flow            Flow?         @relation(fields: [flowId], references: [id])
+  currentNodeId   String?
+  status          SessionStatus @default(ACTIVE)
+  variables       Json?         // Ex: { "nome": "João", "pix_gerado": true }
+  lastInteraction DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@schema("bot_conversa")
+}
+
+// 6. EVENTOS DE CONVERSÃO (Para filtrar por data e calcular % de cada nó)
+model NodeEvent {
+  id        String   @id @default(uuid())
+  phone     String
+  flowId    String
+  flow      Flow     @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  nodeId    String
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([nodeId, createdAt])
+  @@index([flowId, createdAt])
+
+  @@schema("bot_conversa")
+}
