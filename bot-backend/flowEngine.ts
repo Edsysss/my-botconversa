@@ -3,17 +3,15 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DIRECT_URL || process.env.DATABASE_URL,
-    },
-  },
-});
+const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
 
-const EVO_API_URL = "http://localhost:8080";
-const EVO_API_KEY = "@Ed82922545";
-const INSTANCE_NAME = "bot_vencedor";
+const prisma = new PrismaClient(
+  dbUrl ? { datasources: { db: { url: dbUrl } } } : undefined
+);
+
+const EVO_API_URL = process.env.EVO_API_URL || "http://localhost:8080";
+const EVO_API_KEY = process.env.EVO_API_KEY || "@Ed82922545";
+const INSTANCE_NAME = process.env.INSTANCE_NAME || "bot_vencedor";
 
 const evoHeaders = {
   "apikey": EVO_API_KEY,
@@ -62,10 +60,10 @@ export class FlowEngine {
         return;
       }
 
-      let targetNode;
+      let targetNode: any = null;
 
       if (!currentNodeId) {
-        targetNode = flow.nodes.find(n => n.type === 'trigger' || n.data?.type === 'trigger');
+        targetNode = flow.nodes.find(n => n.type === 'trigger' || (n.data as any)?.type === 'trigger');
       } else {
         const sourceNode = flow.nodes.find(n => n.id === currentNodeId);
         const sourceNodeType = (sourceNode?.data as any)?.type || sourceNode?.type;
@@ -111,9 +109,8 @@ export class FlowEngine {
         return;
       }
 
-      console.log(`[FlowEngine] Executando Nó: ${targetNode.type || targetNode.data?.type} | Label: ${targetNode.data?.label}`);
+      console.log(`[FlowEngine] Executando Nó: ${targetNode.type || (targetNode.data as any)?.type}`);
 
-      // 🔥 NOVIDADE: INCREMENTA O CONTADOR DE DISPAROS DO NÓ NO SUPABASE
       await prisma.node.update({
         where: { id: targetNode.id },
         data: { executionCount: { increment: 1 } }
@@ -150,7 +147,7 @@ export class FlowEngine {
       const requiresReply = nodeData?.waitForReply || nodeType === 'buttons';
 
       if (requiresReply) {
-        console.log(`⏸️ [FLOW PAUSED] O nó atual exige resposta do cliente. Aguardando mensagem do número ${phone}...`);
+        console.log(`⏸️ [FLOW PAUSED] Aguardando mensagem do número ${phone}...`);
         await prisma.contactSession.upsert({
           where: { phone },
           update: {
@@ -192,10 +189,6 @@ export class FlowEngine {
     }
   }
 
-  // =========================================================
-  // INTEGRAÇÕES COM A EVOLUTION API
-  // =========================================================
-
   private static async sendTextMessage(phone: string, text: string) {
     try {
       await axios.post(`${EVO_API_URL}/message/sendText/${INSTANCE_NAME}`, {
@@ -216,7 +209,7 @@ export class FlowEngine {
         number: phone,
         text: formattedText
       }, { headers: evoHeaders });
-      console.log(`🔘 [WHATSAPP OUT] Menu interativo enviado com sucesso para ${phone}`);
+      console.log(`🔘 [WHATSAPP OUT] Menu interativo enviado para ${phone}`);
     } catch (error: any) {
       console.error(`❌ Erro ao enviar menu:`, error?.response?.data || error.message);
     }
@@ -232,7 +225,7 @@ export class FlowEngine {
         audio: audioContent,
         encoding: true
       }, { headers: evoHeaders });
-      console.log(`🎙️ [WHATSAPP OUT] Áudio PTT enviado com sucesso para ${phone}`);
+      console.log(`🎙️ [WHATSAPP OUT] Áudio PTT enviado para ${phone}`);
     } catch (error: any) {
       console.error(`❌ Erro ao enviar Áudio PTT:`, error?.response?.data || error.message);
     }
@@ -249,7 +242,7 @@ export class FlowEngine {
         media: mediaContent,
         caption: caption || ""
       }, { headers: evoHeaders });
-      console.log(`🖼️ [WHATSAPP OUT] Mídia (${mediaType}) enviada com sucesso para ${phone}`);
+      console.log(`🖼️ [WHATSAPP OUT] Mídia (${mediaType}) enviada para ${phone}`);
     } catch (error: any) {
       console.error(`❌ Erro ao enviar Mídia:`, error?.response?.data || error.message);
     }
