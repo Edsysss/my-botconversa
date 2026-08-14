@@ -1,7 +1,6 @@
 {
   "name": "bot-backend",
   "version": "1.0.0",
-  "type": "module",
   "main": "index.ts",
   "scripts": {
     "build": "npx prisma generate && npx tsc",

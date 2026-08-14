@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
-import { FlowEngine } from './FlowEngine';
+import { FlowEngine } from './flowEngine';
 
 const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
 
