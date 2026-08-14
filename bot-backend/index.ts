@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
-import { FlowEngine } from './FlowEngine.js';
+import { FlowEngine } from './FlowEngine';
 
 const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
 
@@ -52,7 +52,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 // --- ROTAS ---
 
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('🤖 Backend do Bot Conversa está online na Nuvem!');
 });
 
@@ -75,7 +75,7 @@ app.get('/api/flows', async (req: Request, res: Response) => {
 
 app.get('/api/flows/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const flow = await prisma.flow.findUnique({
       where: { id },
       include: { nodes: true, edges: true }
@@ -94,11 +94,11 @@ app.post('/api/flows', async (req: Request, res: Response) => {
     const { id, name, description, nodes, edges } = req.body;
 
     if (id) {
-      await prisma.node.deleteMany({ where: { flowId: id } });
-      await prisma.edge.deleteMany({ where: { flowId: id } });
+      await prisma.node.deleteMany({ where: { flowId: String(id) } });
+      await prisma.edge.deleteMany({ where: { flowId: String(id) } });
 
       const updatedFlow = await prisma.flow.update({
-        where: { id },
+        where: { id: String(id) },
         data: {
           name,
           description,
@@ -167,7 +167,7 @@ app.post('/api/flows', async (req: Request, res: Response) => {
 
 app.delete('/api/flows/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     await prisma.flow.delete({ where: { id } });
     return res.status(200).json({ success: true, message: 'Fluxo excluído.' });
   } catch (error) {
