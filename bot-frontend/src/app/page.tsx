@@ -331,7 +331,8 @@ export default function App() {
     if (!confirm('Deseja realmente desconectar o WhatsApp deste dispositivo?')) return;
     try {
       setConnStatus("Desconectando...");
-      await axios.delete(`${EVO_URL}/instance/logout/bot_teste_2`, {
+      await fetch(`${EVO_URL}/instance/logout/bot_teste_2`, {
+        method: 'DELETE',
         headers: { "apikey": API_KEY }
       });
       setIsConnected(false);
@@ -339,7 +340,7 @@ export default function App() {
       setQrCode(null);
       setConnStatus("Aparelho desconectado. Gerando novo QR Code...");
     } catch (error) {
-      alert("Erro ao desconectar o aparelho.");
+      alert("Erro de segurança (CORS) no navegador. Desconecte diretamente pelo WhatsApp no seu celular por enquanto.");
       setConnStatus("WhatsApp Conectado!");
     }
   };
@@ -433,9 +434,20 @@ export default function App() {
           setIsConnected(true); 
           setConnStatus("WhatsApp Conectado!"); 
           setQrCode(null);
-          if (data.instance.ownerJid) setConnectedNumber(data.instance.ownerJid.split('@')[0]);
+          
+          // Busca o número real na rota correta
+          try {
+            const fetchRes = await fetch(`${EVO_URL}/instance/fetchInstances?instanceName=bot_teste_2`, {
+              method: "GET", headers: { "apikey": API_KEY }
+            });
+            const instancesData = await fetchRes.json();
+            if (instancesData && instancesData.length > 0) {
+              const owner = instancesData[0].ownerJid || instancesData[0].instance?.ownerJid;
+              if (owner) setConnectedNumber(owner.split('@')[0]);
+            }
+          } catch (e) {}
+
         } else {
-          // Se não estiver "open", força o front a mostrar que desconectou
           setIsConnected(false);
           setConnectedNumber("");
           if (data.base64 || data.qrcode?.base64) {
@@ -450,9 +462,8 @@ export default function App() {
       }
     };
 
-    checkConnection(); // Roda a primeira vez na hora
-    const interval = setInterval(checkConnection, 5000); // Fica de vigia a cada 5 segundos
-
+    checkConnection();
+    const interval = setInterval(checkConnection, 5000);
     return () => clearInterval(interval);
   }, []);
 
