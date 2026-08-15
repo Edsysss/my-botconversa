@@ -187,6 +187,21 @@ app.post('/api/upload', upload.single('file'), (req: Request, res: Response) => 
   }
 });
 
+// Rota para resetar todas as sessões ativas e liberar contatos travados
+app.get('/api/reset-sessions', async (req: Request, res: Response) => {
+  try {
+    const deleted = await prisma.contactSession.deleteMany({});
+    console.log(`🧹 [LIMPEZA] ${deleted.count} sessões de conversa foram resetadas!`);
+    return res.status(200).json({ 
+      success: true, 
+      message: `${deleted.count} sessões ativas foram apagadas com sucesso! Todos os números foram liberados.` 
+    });
+  } catch (error) {
+    console.error('Erro ao resetar sessões:', error);
+    return res.status(500).json({ success: false, error: 'Erro ao resetar sessões no banco.' });
+  }
+});
+
 app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
   try {
     const body = req.body;
