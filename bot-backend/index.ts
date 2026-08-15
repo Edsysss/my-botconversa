@@ -194,15 +194,18 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
     if (body?.event === 'messages.upsert' && body?.data) {
       const messageData = body.data;
 
+      // 1. Ignora mensagens enviadas pelo próprio robô
       if (messageData.key?.fromMe) {
         return res.status(200).json({ status: 'ignored_from_me' });
       }
 
-      const rawJid = messageData.key?.remoteJidAlt || messageData.key?.remoteJid || '';
-      const phone = rawJid.split('@')[0];
+      // 2. Extrai o número do REMETENTE REAL (sender) do payload do Webhook
+      const rawSender = body.sender || messageData.key?.remoteJidAlt || messageData.key?.remoteJid || '';
+      let phone = rawSender.split('@')[0].split(':')[0]; // Remove o @s.whatsapp.net e portas
 
-      if (rawJid.includes('@lid') && !messageData.key?.remoteJidAlt) {
-        return res.status(200).json({ status: 'ignored_lid_event' });
+      // 3. Trava de segurança para grupos ou eventos de sistema LID
+      if (rawSender.includes('@g.us') || (rawSender.includes('@lid') && !body.sender)) {
+        return res.status(200).json({ status: 'ignored_non_user_event' });
       }
 
       const msg = messageData.message;
@@ -219,7 +222,7 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 
       const cleanText = textMessage.trim().toUpperCase();
 
-      console.log(`\n📩 [WEBHOOK RECEBIDO] De: ${phone} | Mensagem: "${cleanText}"`);
+      console.log(`\n📩 [WEBHOOK RECEBIDO] Cliente: ${phone} | Mensagem: "${cleanText}"`);
 
       if (cleanText) {
         const flows = await prisma.flow.findMany({
