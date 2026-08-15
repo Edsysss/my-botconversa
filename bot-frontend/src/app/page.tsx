@@ -16,18 +16,17 @@ import ReactFlow, {
 import { 
   MessageSquare, Mic, Clock, Save, X, Type, Smartphone, QrCode, 
   CheckCircle2, Loader2, Image as ImageIcon, Film, Paperclip, 
-  Zap, Trash2, Upload, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered
+  Zap, Trash2, Upload, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered, Copy
 } from 'lucide-react';
 import axios from 'axios';
 import 'reactflow/dist/style.css';
 
-// URLs de Produção dos seus serviços na Render
 const EVO_URL = "https://my-botconversa.onrender.com";
 const BACKEND_URL = "https://bot-backend-edsys.onrender.com";
 const API_KEY = "Ed82922545";
 
 // =========================================================================
-// 1. NÓ PERSONALIZADO (COM MÚLTIPLAS SAÍDAS PARA BOTÕES)
+// 1. NÓ PERSONALIZADO (COM LIXEIRA NO TOPO)
 // =========================================================================
 const FlowCardNode = ({ data, selected }: any) => {
   const isTrigger = data.type === 'trigger';
@@ -43,31 +42,45 @@ const FlowCardNode = ({ data, selected }: any) => {
         <Handle type="target" position={Position.Left} className="!w-3.5 !h-3.5 !bg-emerald-500 !border-2 !border-slate-900" />
       )}
 
-      <div className={`px-4 py-3 rounded-t-lg flex items-center gap-3 border-b ${
+      {/* Cabeçalho com Botão de Apagar */}
+      <div className={`px-4 py-3 rounded-t-lg flex items-center justify-between border-b ${
         isTrigger ? 'bg-emerald-500/10 border-emerald-500/20' : 
         isDelay ? 'bg-amber-500/10 border-amber-500/20' : 
         isButtons ? 'bg-purple-500/10 border-purple-500/20' : 'bg-slate-800/50 border-slate-700/50'
       }`}>
-        <div className={`p-1.5 rounded-md ${
-          isTrigger ? 'bg-emerald-500/20 text-emerald-400' :
-          isDelay ? 'bg-amber-500/20 text-amber-400' :
-          isButtons ? 'bg-purple-500/20 text-purple-400' :
-          data.type === 'audio' ? 'bg-purple-500/20 text-purple-400' :
-          data.type === 'image' ? 'bg-blue-500/20 text-blue-400' :
-          data.type === 'video' ? 'bg-pink-500/20 text-pink-400' : 'bg-slate-700 text-slate-300'
-        }`}>
-          {isTrigger && <Zap size={16} />}
-          {isDelay && <Clock size={16} />}
-          {isButtons && <ListOrdered size={16} />}
-          {data.type === 'text' && <MessageSquare size={16} />}
-          {data.type === 'audio' && <Mic size={16} />}
-          {data.type === 'image' && <ImageIcon size={16} />}
-          {data.type === 'video' && <Film size={16} />}
+        <div className="flex items-center gap-3">
+          <div className={`p-1.5 rounded-md ${
+            isTrigger ? 'bg-emerald-500/20 text-emerald-400' :
+            isDelay ? 'bg-amber-500/20 text-amber-400' :
+            isButtons ? 'bg-purple-500/20 text-purple-400' :
+            data.type === 'audio' ? 'bg-purple-500/20 text-purple-400' :
+            data.type === 'image' ? 'bg-blue-500/20 text-blue-400' :
+            data.type === 'video' ? 'bg-pink-500/20 text-pink-400' : 'bg-slate-700 text-slate-300'
+          }`}>
+            {isTrigger && <Zap size={16} />}
+            {isDelay && <Clock size={16} />}
+            {isButtons && <ListOrdered size={16} />}
+            {data.type === 'text' && <MessageSquare size={16} />}
+            {data.type === 'audio' && <Mic size={16} />}
+            {data.type === 'image' && <ImageIcon size={16} />}
+            {data.type === 'video' && <Film size={16} />}
+          </div>
+          <div className="font-semibold text-sm text-slate-200">{data.label}</div>
         </div>
-        <div className="font-semibold text-sm text-slate-200">{data.label}</div>
+        
+        {/* Botão de Lixeira no Card (Não aparece no gatilho) */}
+        {!isTrigger && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); if(data.onDelete) data.onDelete(); }} 
+            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+            title="Apagar Bloco"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
 
-      <div className="p-4 text-sm text-slate-400 flex flex-col gap-2">
+      <div className="p-4 text-sm text-slate-400 flex flex-col gap-2 pointer-events-none">
         {isTrigger && <span className="font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded w-fit">"{data.text}"</span>}
         {isDelay && <span>Aguardar {data.delayValue} {data.delayUnit === 'minutes' ? 'Minutos' : 'Segundos'}</span>}
         
@@ -76,7 +89,7 @@ const FlowCardNode = ({ data, selected }: any) => {
         )}
 
         {isButtons && (
-          <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-slate-800">
+          <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-slate-800 pointer-events-auto">
             {buttonsList.map((btn: string, index: number) => (
               <div key={index} className="relative flex items-center justify-between bg-slate-800/90 px-3.5 py-2 rounded-lg border border-slate-700/60 text-xs font-semibold text-emerald-300">
                 <span>🔘 {btn}</span>
@@ -124,10 +137,10 @@ export default function App() {
   const [nodes, setNodes] = useState<Node[]>(defaultNodes);
   const [edges, setEdges] = useState<Edge[]>(defaultEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [copiedNode, setCopiedNode] = useState<Node | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Estados dos formulários do Drawer Lateral
   const [nodeType, setNodeType] = useState('text');
   const [nodeText, setNodeText] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
@@ -138,7 +151,6 @@ export default function App() {
   const [button1, setButton1] = useState('Opção 1');
   const [button2, setButton2] = useState('Opção 2');
 
-  // Modal WhatsApp (Ajustado para Render)
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connStatus, setConnStatus] = useState<string>("Iniciando conexão...");
@@ -158,6 +170,53 @@ export default function App() {
   };
 
   useEffect(() => { fetchFlows(); }, []);
+
+  // Atalhos de Teclado: Ctrl+C e Ctrl+V
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (viewMode !== 'builder') return;
+      
+      // Ctrl+C
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        if (selectedNode && selectedNode.id !== 'node-gatilho') {
+          setCopiedNode(selectedNode);
+        }
+      }
+      // Ctrl+V
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        if (copiedNode) {
+          const newNode: Node = {
+            ...copiedNode,
+            id: `node-${Date.now()}`,
+            position: { x: copiedNode.position.x + 30, y: copiedNode.position.y + 30 },
+            selected: false,
+          };
+          setNodes((nds) => [...nds, newNode]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNode, copiedNode, viewMode]);
+
+  const handleDeleteNodeId = useCallback((idToDelete: string) => {
+    if (idToDelete === 'node-gatilho') {
+      alert('O Gatilho principal não pode ser apagado.');
+      return;
+    }
+    setNodes((nds) => nds.filter((n) => n.id !== idToDelete));
+    setEdges((eds) => eds.filter((e) => e.source !== idToDelete && e.target !== idToDelete));
+    if (selectedNode?.id === idToDelete) setSelectedNode(null);
+  }, [selectedNode]);
+
+  const nodesWithActions = nodes.map(node => ({
+    ...node,
+    data: {
+      ...node.data,
+      onDelete: () => handleDeleteNodeId(node.id)
+    }
+  }));
 
   const handleCreateNewFlow = () => {
     setCurrentFlowId(null);
@@ -213,6 +272,47 @@ export default function App() {
     }
   };
 
+  const handleDuplicateFlow = async (flowId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setSaving(true);
+      const res = await axios.get(`${BACKEND_URL}/api/flows/${flowId}`);
+      
+      if (res.data?.success) {
+        const flowToCopy = res.data.flow;
+
+        const payload = {
+          id: null, // Força a criação de um novo registro no banco
+          name: `${flowToCopy.name} (Cópia)`,
+          description: flowToCopy.description,
+          nodes: flowToCopy.nodes.map((n: any) => ({
+            id: n.id,
+            type: n.type || 'custom',
+            positionX: n.positionX,
+            positionY: n.positionY,
+            data: n.data
+          })),
+          edges: flowToCopy.edges.map((e: any) => ({
+            id: e.id,
+            sourceNodeId: e.sourceNodeId,
+            targetNodeId: e.targetNodeId,
+            sourceHandle: e.sourceHandle || null
+          }))
+        };
+
+        const createRes = await axios.post(`${BACKEND_URL}/api/flows`, payload);
+        if (createRes.data?.success) {
+          alert('Fluxo duplicado com sucesso!');
+          fetchFlows();
+        }
+      }
+    } catch (error) {
+      alert('Erro ao duplicar o fluxo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveFlow = async () => {
     try {
       setSaving(true);
@@ -254,30 +354,8 @@ export default function App() {
     setButton2(node.data.buttons?.[1] || 'Opção 2');
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setUploading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await axios.post(`${BACKEND_URL}/api/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (response.data?.success) setMediaUrl(response.data.url);
-    } catch (error) {
-      alert('Erro ao realizar upload.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleUpdateNode = () => {
     if (!selectedNode) return;
-
     setNodes((nds) =>
       nds.map((n) => {
         if (n.id === selectedNode.id) {
@@ -311,17 +389,6 @@ export default function App() {
     setSelectedNode(null);
   };
 
-  const handleDeleteNode = () => {
-    if (!selectedNode) return;
-    if (selectedNode.id === 'node-gatilho') {
-      alert('O Gatilho principal não pode ser apagado.');
-      return;
-    }
-    setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
-    setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
-    setSelectedNode(null);
-  };
-
   const handleAddNode = (type: string) => {
     const id = `node-${Date.now()}`;
     const newNode: Node = {
@@ -343,20 +410,14 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   };
 
-  // Checagem de Conexão com o WhatsApp na Render
   useEffect(() => {
     let interval: NodeJS.Timeout;
     const checkConnection = async () => {
       try {
-        const res = await fetch(`${EVO_URL}/instance/connect/bot_teste_2`, {
-          method: "GET",
-          headers: { "apikey": API_KEY },
-        });
+        const res = await fetch(`${EVO_URL}/instance/connect/bot_teste_2`, { method: "GET", headers: { "apikey": API_KEY } });
         const data = await res.json();
         if (data.instance && data.instance.state === "open") {
-          setIsConnected(true);
-          setConnStatus("WhatsApp Conectado!");
-          setQrCode(null);
+          setIsConnected(true); setConnStatus("WhatsApp Conectado!"); setQrCode(null);
           if (data.instance.ownerJid) setConnectedNumber(data.instance.ownerJid.split('@')[0]);
           clearInterval(interval);
         } else if (data.base64 || data.qrcode?.base64) {
@@ -364,9 +425,7 @@ export default function App() {
           const codeBase64 = data.base64 || data.qrcode?.base64;
           if (isConnectModalOpen) setQrCode(codeBase64);
         }
-      } catch (error) {
-        setConnStatus("Erro ao conectar à API.");
-      }
+      } catch (error) { setConnStatus("Erro ao conectar à API."); }
     };
     checkConnection();
     if (isConnectModalOpen && !isConnected) interval = setInterval(checkConnection, 3000);
@@ -421,7 +480,17 @@ export default function App() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:bg-emerald-500/20 transition-all"><Zap size={18} /></div>
-                      <button onClick={(e) => handleDeleteFlow(flow.id, e)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Apagar Fluxo"><Trash2 size={16} /></button>
+                      
+                      <div className="flex gap-2">
+                        {/* NOVO BOTÃO DE DUPLICAR AQUI */}
+                        <button onClick={(e) => handleDuplicateFlow(flow.id, e)} className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all" title="Duplicar Fluxo">
+                          <Copy size={16} />
+                        </button>
+                        <button onClick={(e) => handleDeleteFlow(flow.id, e)} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Apagar Fluxo">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
                     </div>
                     <h3 className="font-bold text-slate-100 text-base mb-1 group-hover:text-emerald-400 transition-all">{flow.name}</h3>
                     <p className="text-slate-400 text-xs line-clamp-2 mb-4">{flow.description || 'Sem descrição cadastrada.'}</p>
@@ -486,8 +555,7 @@ export default function App() {
             {isConnected ? 'WhatsApp Conectado' : 'Conectar WhatsApp'}
           </button>
           <button onClick={handleSaveFlow} disabled={saving} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/20 border-0 active:scale-95 cursor-pointer">
-            <Save size={16} />
-            {saving ? 'Salvando...' : 'Salvar Fluxo'}
+            <Save size={16} /> {saving ? 'Salvando...' : 'Salvar Fluxo'}
           </button>
         </div>
       </header>
@@ -495,29 +563,29 @@ export default function App() {
       <div className="flex-1 flex relative">
         <aside className="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-3 z-10">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Adicionar Mídias</h2>
-          <button onClick={() => handleAddNode('text')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl text-slate-200 text-sm font-medium transition-all text-left group">
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg group-hover:bg-blue-500/20"><MessageSquare size={18} /></div> Texto
-          </button>
-          <button onClick={() => handleAddNode('buttons')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl text-slate-200 text-sm font-medium transition-all text-left group">
-            <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg group-hover:bg-purple-500/20"><ListOrdered size={18} /></div> Botões / Decisão
-          </button>
-          <button onClick={() => handleAddNode('image')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl text-slate-200 text-sm font-medium transition-all text-left group">
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg group-hover:bg-blue-500/20"><ImageIcon size={18} /></div> Imagem
-          </button>
-          <button onClick={() => handleAddNode('video')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl text-slate-200 text-sm font-medium transition-all text-left group">
-            <div className="p-2 bg-pink-500/10 text-pink-400 rounded-lg group-hover:bg-pink-500/20"><Film size={18} /></div> Vídeo
-          </button>
-          <button onClick={() => handleAddNode('audio')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl text-slate-200 text-sm font-medium transition-all text-left group">
-            <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg group-hover:bg-purple-500/20"><Mic size={18} /></div> Áudio
-          </button>
-          <button onClick={() => handleAddNode('delay')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl text-slate-200 text-sm font-medium transition-all text-left group">
-            <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg group-hover:bg-amber-500/20"><Clock size={18} /></div> Smart Delay
-          </button>
+          <button onClick={() => handleAddNode('text')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 rounded-xl text-slate-200 text-sm font-medium"><MessageSquare size={18}/> Texto</button>
+          <button onClick={() => handleAddNode('buttons')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 rounded-xl text-slate-200 text-sm font-medium"><ListOrdered size={18}/> Botões</button>
+          <button onClick={() => handleAddNode('image')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 rounded-xl text-slate-200 text-sm font-medium"><ImageIcon size={18}/> Imagem</button>
+          <button onClick={() => handleAddNode('audio')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 rounded-xl text-slate-200 text-sm font-medium"><Mic size={18}/> Áudio</button>
+          <button onClick={() => handleAddNode('delay')} className="flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700/80 rounded-xl text-slate-200 text-sm font-medium"><Clock size={18}/> Smart Delay</button>
         </aside>
 
         <main className="flex-1 relative bg-slate-950 w-full h-[calc(100vh-64px)]">
-          <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={onNodeClick} nodeTypes={nodeTypes} fitView>
-            <Background color="#334155" gap={24} size={1.5} variant={BackgroundVariant.Dots} />
+          <ReactFlow 
+            nodes={nodesWithActions} 
+            edges={edges} 
+            onNodesChange={onNodesChange} 
+            onEdgesChange={onEdgesChange} 
+            onConnect={onConnect} 
+            onNodeClick={onNodeClick} 
+            nodeTypes={nodeTypes} 
+            fitView
+            connectionRadius={150} 
+            snapToGrid={true}      
+            snapGrid={[20, 20]}    
+            deleteKeyCode={['Backspace', 'Delete']} 
+          >
+            <Background color="#334155" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
             <Controls />
             <MiniMap className="bg-slate-900 border-slate-800" maskColor="rgba(15, 23, 42, 0.8)" />
           </ReactFlow>
@@ -532,77 +600,46 @@ export default function App() {
 
             {nodeType === 'trigger' && (
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-emerald-400 uppercase">Palavra-Chave do Gatilho</label>
-                <input type="text" value={nodeText} onChange={(e) => setNodeText(e.target.value)} placeholder="Ex: COMPRAR" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 focus:border-emerald-500 font-mono" />
+                <label className="text-xs font-semibold text-emerald-400 uppercase">Gatilho</label>
+                <input type="text" value={nodeText} onChange={(e) => setNodeText(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 focus:border-emerald-500" />
               </div>
             )}
 
             {nodeType !== 'delay' && nodeType !== 'trigger' && (
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-400 uppercase">Mensagem / Pergunta</label>
-                <textarea rows={3} value={nodeText} onChange={(e) => setNodeText(e.target.value)} placeholder="Digite o texto da mensagem..." className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 focus:border-emerald-500 resize-none" />
+                <label className="text-xs font-semibold text-slate-400 uppercase">Mensagem</label>
+                <textarea rows={3} value={nodeText} onChange={(e) => setNodeText(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 focus:border-emerald-500 resize-none" />
               </div>
             )}
 
             {nodeType !== 'delay' && nodeType !== 'trigger' && nodeType !== 'buttons' && (
               <div className="flex items-center justify-between p-3 bg-slate-800/80 rounded-xl border border-slate-700/50 my-1">
                 <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-slate-200">Aguardar Resposta do Cliente</span>
-                  <span className="text-[10px] text-slate-400">Pausa o fluxo até o usuário responder</span>
+                  <span className="text-xs font-semibold text-slate-200">Aguardar Resposta</span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={waitForReply} onChange={(e) => setWaitForReply(e.target.checked)} />
-                  <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                </label>
+                <input type="checkbox" checked={waitForReply} onChange={(e) => setWaitForReply(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
               </div>
             )}
 
             {nodeType === 'buttons' && (
               <div className="flex flex-col gap-3 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                <label className="text-xs font-semibold text-purple-300 uppercase">Opções dos Botões</label>
-                <div className="flex flex-col gap-2">
-                  <input type="text" value={button1} onChange={(e) => setButton1(e.target.value)} placeholder="Botão 1" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 focus:border-purple-500" />
-                  <input type="text" value={button2} onChange={(e) => setButton2(e.target.value)} placeholder="Botão 2" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 focus:border-purple-500" />
-                </div>
-              </div>
-            )}
-
-            {(nodeType === 'image' || nodeType === 'video' || nodeType === 'audio') && (
-              <div className="flex flex-col gap-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                <label className="text-xs font-semibold text-slate-400 uppercase flex items-center gap-2"><Paperclip size={14} /> Arquivo de Mídia</label>
-                <div className="relative">
-                  <input type="file" id="file-upload" accept={nodeType === 'audio' ? 'audio/*' : nodeType === 'video' ? 'video/*' : 'image/*'} onChange={handleFileUpload} className="hidden" />
-                  <label htmlFor="file-upload" className="flex items-center justify-center gap-2 w-full bg-slate-800 hover:bg-slate-700 border border-slate-700/80 rounded-lg py-2.5 px-3 text-xs text-slate-200 cursor-pointer transition-all">
-                    {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-                    {uploading ? 'Enviando...' : 'Escolher do computador'}
-                  </label>
-                </div>
-                <input type="text" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="URL do arquivo..." className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 focus:border-emerald-500" />
-                {nodeType === 'audio' && (
-                  <div className="flex items-center justify-between mt-1 pt-2 border-t border-slate-700/50">
-                    <span className="text-xs text-slate-300">Enviar como Gravado (PTT)</span>
-                    <input type="checkbox" checked={isPtt} onChange={(e) => setIsPtt(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
-                  </div>
-                )}
+                <input type="text" value={button1} onChange={(e) => setButton1(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-100" />
+                <input type="text" value={button2} onChange={(e) => setButton2(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-100" />
               </div>
             )}
 
             {nodeType === 'delay' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-amber-400 uppercase flex items-center gap-1.5"><Clock size={14} /> Smart Delay (Atraso)</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" min={1} value={delayValue} onChange={(e) => setDelayValue(Number(e.target.value))} className="w-1/2 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 focus:border-amber-500" />
-                  <select value={delayUnit} onChange={(e) => setDelayUnit(e.target.value as 'seconds' | 'minutes')} className="w-1/2 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 focus:border-amber-500">
-                    <option value="seconds">Segundos</option><option value="minutes">Minutos</option>
-                  </select>
-                </div>
+              <div className="flex items-center gap-2">
+                <input type="number" min={1} value={delayValue} onChange={(e) => setDelayValue(Number(e.target.value))} className="w-1/2 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100" />
+                <select value={delayUnit} onChange={(e) => setDelayUnit(e.target.value as 'seconds' | 'minutes')} className="w-1/2 bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100">
+                  <option value="seconds">Segundos</option><option value="minutes">Minutos</option>
+                </select>
               </div>
             )}
           </div>
 
           <div>
-            <button onClick={handleUpdateNode} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition-all border-0 cursor-pointer active:scale-95">Aplicar Alterações</button>
-            <button onClick={handleDeleteNode} className="w-full flex items-center justify-center gap-2 mt-3 bg-transparent hover:bg-red-500/10 text-red-500 border border-red-500/20 font-medium py-2.5 rounded-lg transition-all cursor-pointer active:scale-95"><Trash2 size={18} /> Apagar Bloco</button>
+            <button onClick={handleUpdateNode} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition-all">Aplicar Alterações</button>
           </div>
         </aside>
       </div>
