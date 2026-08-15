@@ -9,9 +9,9 @@ const prisma = new PrismaClient(
   dbUrl ? { datasources: { db: { url: dbUrl } } } : undefined
 );
 
-const EVO_API_URL = process.env.EVO_API_URL || "http://localhost:8080";
-const EVO_API_KEY = process.env.EVO_API_KEY || "@Ed82922545";
-const INSTANCE_NAME = process.env.INSTANCE_NAME || "bot_vencedor";
+const EVO_API_URL = process.env.EVO_API_URL || "https://my-botconversa.onrender.com";
+const EVO_API_KEY = process.env.EVO_API_KEY || "Ed82922545";
+const INSTANCE_NAME = process.env.INSTANCE_NAME || "bot_teste_2"; // A instância que você conectou o QR Code
 
 const evoHeaders = {
   "apikey": EVO_API_KEY,
