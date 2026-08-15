@@ -331,7 +331,7 @@ export default function App() {
     if (!confirm('Deseja realmente desconectar o WhatsApp deste dispositivo?')) return;
     try {
       setConnStatus("Desconectando...");
-      await fetch(`${EVO_URL}/instance/logout/bot_oficial`, {
+      await fetch(`${EVO_URL}/instance/logout/bot_oficial_v2`, {
         method: 'DELETE',
         headers: { "apikey": API_KEY }
       });
@@ -424,7 +424,7 @@ export default function App() {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const res = await fetch(`${EVO_URL}/instance/connect/bot_oficial`, { 
+        const res = await fetch(`${EVO_URL}/instance/connect/bot_oficial_v2`, { 
           method: "GET", 
           headers: { "apikey": API_KEY } 
         });
@@ -437,7 +437,7 @@ export default function App() {
           
           // Busca o número real na rota correta
           try {
-            const fetchRes = await fetch(`${EVO_URL}/instance/fetchInstances?instanceName=bot_oficial`, {
+            const fetchRes = await fetch(`${EVO_URL}/instance/fetchInstances?instanceName=bot_oficial_v2`, {
               method: "GET", headers: { "apikey": API_KEY }
             });
             const instancesData = await fetchRes.json();
