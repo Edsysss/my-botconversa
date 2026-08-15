@@ -16,7 +16,7 @@ import ReactFlow, {
 import { 
   MessageSquare, Mic, Clock, Save, X, Type, Smartphone, QrCode, 
   CheckCircle2, Loader2, Image as ImageIcon, Film, Paperclip, 
-  Zap, Trash2, Upload, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered, Copy
+  Zap, Trash2, Upload, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered, Copy, LogOut
 } from 'lucide-react';
 import axios from 'axios';
 import 'reactflow/dist/style.css';
@@ -26,7 +26,7 @@ const BACKEND_URL = "https://bot-backend-edsys.onrender.com";
 const API_KEY = "Ed82922545";
 
 // =========================================================================
-// 1. NÓ PERSONALIZADO (COM LIXEIRA NO TOPO)
+// 1. NÓ PERSONALIZADO
 // =========================================================================
 const FlowCardNode = ({ data, selected }: any) => {
   const isTrigger = data.type === 'trigger';
@@ -42,7 +42,6 @@ const FlowCardNode = ({ data, selected }: any) => {
         <Handle type="target" position={Position.Left} className="!w-3.5 !h-3.5 !bg-emerald-500 !border-2 !border-slate-900" />
       )}
 
-      {/* Cabeçalho com Botão de Apagar */}
       <div className={`px-4 py-3 rounded-t-lg flex items-center justify-between border-b ${
         isTrigger ? 'bg-emerald-500/10 border-emerald-500/20' : 
         isDelay ? 'bg-amber-500/10 border-amber-500/20' : 
@@ -68,7 +67,6 @@ const FlowCardNode = ({ data, selected }: any) => {
           <div className="font-semibold text-sm text-slate-200">{data.label}</div>
         </div>
         
-        {/* Botão de Lixeira no Card (Não aparece no gatilho) */}
         {!isTrigger && (
           <button 
             onClick={(e) => { e.stopPropagation(); if(data.onDelete) data.onDelete(); }} 
@@ -153,7 +151,7 @@ export default function App() {
 
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [connStatus, setConnStatus] = useState<string>("Iniciando conexão...");
+  const [connStatus, setConnStatus] = useState<string>("Verificando conexão...");
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [connectedNumber, setConnectedNumber] = useState<string>("");
 
@@ -171,18 +169,15 @@ export default function App() {
 
   useEffect(() => { fetchFlows(); }, []);
 
-  // Atalhos de Teclado: Ctrl+C e Ctrl+V
+  // Atalhos de Teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (viewMode !== 'builder') return;
-      
-      // Ctrl+C
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
         if (selectedNode && selectedNode.id !== 'node-gatilho') {
           setCopiedNode(selectedNode);
         }
       }
-      // Ctrl+V
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         if (copiedNode) {
           const newNode: Node = {
@@ -195,7 +190,6 @@ export default function App() {
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedNode, copiedNode, viewMode]);
@@ -277,12 +271,10 @@ export default function App() {
     try {
       setSaving(true);
       const res = await axios.get(`${BACKEND_URL}/api/flows/${flowId}`);
-      
       if (res.data?.success) {
         const flowToCopy = res.data.flow;
-
         const payload = {
-          id: null, // Força a criação de um novo registro no banco
+          id: null,
           name: `${flowToCopy.name} (Cópia)`,
           description: flowToCopy.description,
           nodes: flowToCopy.nodes.map((n: any) => ({
@@ -299,7 +291,6 @@ export default function App() {
             sourceHandle: e.sourceHandle || null
           }))
         };
-
         const createRes = await axios.post(`${BACKEND_URL}/api/flows`, payload);
         if (createRes.data?.success) {
           alert('Fluxo duplicado com sucesso!');
@@ -323,7 +314,6 @@ export default function App() {
         nodes: nodes.map(n => ({ id: n.id, type: n.data.type, positionX: n.position.x, positionY: n.position.y, data: n.data })),
         edges: edges.map(e => ({ id: e.id, sourceNodeId: e.source, targetNodeId: e.target, sourceHandle: e.sourceHandle }))
       };
-      
       const res = await axios.post(`${BACKEND_URL}/api/flows`, payload);
       if (res.data?.success && res.data?.flow) {
         setCurrentFlowId(res.data.flow.id);
@@ -334,6 +324,23 @@ export default function App() {
       alert('Erro ao salvar no backend.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Deseja realmente desconectar o WhatsApp deste dispositivo?')) return;
+    try {
+      setConnStatus("Desconectando...");
+      await axios.delete(`${EVO_URL}/instance/logout/bot_teste_2`, {
+        headers: { "apikey": API_KEY }
+      });
+      setIsConnected(false);
+      setConnectedNumber("");
+      setQrCode(null);
+      setConnStatus("Aparelho desconectado. Gerando novo QR Code...");
+    } catch (error) {
+      alert("Erro ao desconectar o aparelho.");
+      setConnStatus("WhatsApp Conectado!");
     }
   };
 
@@ -410,27 +417,44 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   };
 
+  // =========================================================================
+  // RADAR DE CONEXÃO (RODA CONTINUAMENTE)
+  // =========================================================================
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     const checkConnection = async () => {
       try {
-        const res = await fetch(`${EVO_URL}/instance/connect/bot_teste_2`, { method: "GET", headers: { "apikey": API_KEY } });
+        const res = await fetch(`${EVO_URL}/instance/connect/bot_teste_2`, { 
+          method: "GET", 
+          headers: { "apikey": API_KEY } 
+        });
         const data = await res.json();
+        
         if (data.instance && data.instance.state === "open") {
-          setIsConnected(true); setConnStatus("WhatsApp Conectado!"); setQrCode(null);
+          setIsConnected(true); 
+          setConnStatus("WhatsApp Conectado!"); 
+          setQrCode(null);
           if (data.instance.ownerJid) setConnectedNumber(data.instance.ownerJid.split('@')[0]);
-          clearInterval(interval);
-        } else if (data.base64 || data.qrcode?.base64) {
+        } else {
+          // Se não estiver "open", força o front a mostrar que desconectou
           setIsConnected(false);
-          const codeBase64 = data.base64 || data.qrcode?.base64;
-          if (isConnectModalOpen) setQrCode(codeBase64);
+          setConnectedNumber("");
+          if (data.base64 || data.qrcode?.base64) {
+            setQrCode(data.base64 || data.qrcode?.base64);
+            setConnStatus("Aguardando leitura do QR Code...");
+          }
         }
-      } catch (error) { setConnStatus("Erro ao conectar à API."); }
+      } catch (error) { 
+        setIsConnected(false);
+        setConnectedNumber("");
+        setConnStatus("Erro ao verificar conexão da API."); 
+      }
     };
-    checkConnection();
-    if (isConnectModalOpen && !isConnected) interval = setInterval(checkConnection, 3000);
+
+    checkConnection(); // Roda a primeira vez na hora
+    const interval = setInterval(checkConnection, 5000); // Fica de vigia a cada 5 segundos
+
     return () => clearInterval(interval);
-  }, [isConnectModalOpen, isConnected]);
+  }, []);
 
   const filteredFlows = flowsList.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -446,9 +470,9 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsConnectModalOpen(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all border ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}>
+            <button onClick={() => setIsConnectModalOpen(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all border ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'}`}>
               {isConnected ? <CheckCircle2 size={16} /> : <Smartphone size={16} />}
-              {isConnected ? 'WhatsApp Conectado' : 'Conectar WhatsApp'}
+              {isConnected ? `Conectado: ${connectedNumber}` : 'WhatsApp Desconectado'}
             </button>
             <button onClick={handleCreateNewFlow} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-95">
               <Plus size={18} /> Novo Fluxo
@@ -482,7 +506,6 @@ export default function App() {
                       <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:bg-emerald-500/20 transition-all"><Zap size={18} /></div>
                       
                       <div className="flex gap-2">
-                        {/* NOVO BOTÃO DE DUPLICAR AQUI */}
                         <button onClick={(e) => handleDuplicateFlow(flow.id, e)} className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all" title="Duplicar Fluxo">
                           <Copy size={16} />
                         </button>
@@ -510,28 +533,40 @@ export default function App() {
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-4 relative">
               <button onClick={() => setIsConnectModalOpen(false)} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-all"><X size={20} /></button>
-              <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 mt-2"><QrCode size={32} /></div>
+              
+              {!isConnected && <div className="p-3 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 mt-2"><QrCode size={32} /></div>}
+              
               <div className="text-center">
-                <h3 className="font-bold text-lg text-slate-100">Conectar WhatsApp</h3>
+                <h3 className="font-bold text-lg text-slate-100">Configurações do WhatsApp</h3>
                 <p className="text-xs text-slate-400 mt-1">{connStatus}</p>
               </div>
-              <div className="w-64 h-64 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center relative overflow-hidden my-2">
+
+              <div className={`w-64 ${isConnected ? 'h-auto py-6' : 'h-64'} bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center relative overflow-hidden my-2 px-4`}>
                 {isConnected ? (
-                  <div className="flex flex-col items-center gap-2 text-emerald-400">
+                  <div className="flex flex-col items-center justify-center w-full gap-4 text-emerald-400">
                     <CheckCircle2 size={48} />
-                    <span className="font-semibold text-sm">Dispositivo Vinculado!</span>
-                    <span className="text-xs text-slate-400">{connectedNumber}</span>
+                    <div className="text-center">
+                      <span className="font-semibold text-sm block">Dispositivo Vinculado!</span>
+                      <span className="text-xs text-slate-400 block mt-1">Número: {connectedNumber}</span>
+                    </div>
+                    <button 
+                      onClick={handleDisconnect} 
+                      className="mt-2 flex items-center justify-center gap-2 w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-2 rounded-lg text-xs font-semibold transition-all"
+                    >
+                      <LogOut size={14} /> Desconectar Aparelho
+                    </button>
                   </div>
                 ) : qrCode ? (
                   <img src={qrCode} alt="QR Code WhatsApp" className="w-full h-full object-contain p-2" />
                 ) : (
                   <div className="flex flex-col items-center gap-3 text-slate-500">
                     <Loader2 className="animate-spin text-emerald-500" size={32} />
-                    <span className="text-xs">Gerando QR Code...</span>
+                    <span className="text-xs">Buscando status...</span>
                   </div>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 text-center">Abra o WhatsApp no celular &gt; Aparelhos conectados &gt; Conectar um aparelho.</p>
+              
+              {!isConnected && <p className="text-[11px] text-slate-500 text-center">Abra o WhatsApp no celular &gt; Aparelhos conectados &gt; Conectar um aparelho.</p>}
             </div>
           </div>
         )}
@@ -550,9 +585,9 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => setIsConnectModalOpen(false)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all border ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}>
+          <button onClick={() => setIsConnectModalOpen(true)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all border ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'}`}>
             {isConnected ? <CheckCircle2 size={16} /> : <Smartphone size={16} />}
-            {isConnected ? 'WhatsApp Conectado' : 'Conectar WhatsApp'}
+            {isConnected ? `Conectado: ${connectedNumber}` : 'WhatsApp Desconectado'}
           </button>
           <button onClick={handleSaveFlow} disabled={saving} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/20 border-0 active:scale-95 cursor-pointer">
             <Save size={16} /> {saving ? 'Salvando...' : 'Salvar Fluxo'}
@@ -642,6 +677,49 @@ export default function App() {
             <button onClick={handleUpdateNode} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition-all">Aplicar Alterações</button>
           </div>
         </aside>
+
+        {/* Modal de Conexão com WhatsApp no Builder */}
+        {isConnectModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-4 relative">
+              <button onClick={() => setIsConnectModalOpen(false)} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-all"><X size={20} /></button>
+              
+              {!isConnected && <div className="p-3 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 mt-2"><QrCode size={32} /></div>}
+              
+              <div className="text-center">
+                <h3 className="font-bold text-lg text-slate-100">Configurações do WhatsApp</h3>
+                <p className="text-xs text-slate-400 mt-1">{connStatus}</p>
+              </div>
+
+              <div className={`w-64 ${isConnected ? 'h-auto py-6' : 'h-64'} bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center relative overflow-hidden my-2 px-4`}>
+                {isConnected ? (
+                  <div className="flex flex-col items-center justify-center w-full gap-4 text-emerald-400">
+                    <CheckCircle2 size={48} />
+                    <div className="text-center">
+                      <span className="font-semibold text-sm block">Dispositivo Vinculado!</span>
+                      <span className="text-xs text-slate-400 block mt-1">Número: {connectedNumber}</span>
+                    </div>
+                    <button 
+                      onClick={handleDisconnect} 
+                      className="mt-2 flex items-center justify-center gap-2 w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-2 rounded-lg text-xs font-semibold transition-all"
+                    >
+                      <LogOut size={14} /> Desconectar Aparelho
+                    </button>
+                  </div>
+                ) : qrCode ? (
+                  <img src={qrCode} alt="QR Code WhatsApp" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <div className="flex flex-col items-center gap-3 text-slate-500">
+                    <Loader2 className="animate-spin text-emerald-500" size={32} />
+                    <span className="text-xs">Buscando status...</span>
+                  </div>
+                )}
+              </div>
+              
+              {!isConnected && <p className="text-[11px] text-slate-500 text-center">Abra o WhatsApp no celular &gt; Aparelhos conectados &gt; Conectar um aparelho.</p>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
