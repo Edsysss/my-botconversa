@@ -214,15 +214,24 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
         return res.status(200).json({ status: 'ignored_from_me' });
       }
 
-      // 2. Extrai o número do REMETENTE REAL (sender) do payload do Webhook
-      const rawSender = body.sender || messageData.key?.remoteJidAlt || messageData.key?.remoteJid || '';
-      let phone = rawSender.split('@')[0].split(':')[0]; // Remove o @s.whatsapp.net e portas
-
-      // 3. Trava de segurança para grupos ou eventos de sistema LID
-      if (rawSender.includes('@g.us') || (rawSender.includes('@lid') && !body.sender)) {
-        return res.status(200).json({ status: 'ignored_non_user_event' });
+      // 2. Trava de segurança para grupos ou canais
+      const remoteJid = messageData.key?.remoteJid || '';
+      if (remoteJid.includes('@g.us') || remoteJid.includes('@newsletter')) {
+        return res.status(200).json({ status: 'ignored_group_or_channel' });
       }
 
+      // 3. Extração Inteligente do Número Real (Resolve problema do LID e sufixos)
+      // Prioriza remoteJidAlt, depois sender e por fim remoteJid
+      let rawPhone = messageData.key?.remoteJidAlt || body.sender || messageData.key?.remoteJid || '';
+      
+      // Limpa caracteres deixando apenas os números do telefone (ex: 554888790246)
+      const phone = rawPhone.split('@')[0].split(':')[0].replace(/\D/g, '');
+
+      if (!phone) {
+        return res.status(200).json({ status: 'invalid_phone_extracted' });
+      }
+
+      // 4. Extração do Texto da Mensagem
       const msg = messageData.message;
       const textMessage =
         msg?.conversation ||
@@ -237,9 +246,10 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 
       const cleanText = textMessage.trim().toUpperCase();
 
-      console.log(`\n📩 [WEBHOOK RECEBIDO] Cliente: ${phone} | Mensagem: "${cleanText}"`);
+      console.log(`\n📩 [WEBHOOK RECEBIDO] Cliente Real: ${phone} | Mensagem: "${cleanText}"`);
 
       if (cleanText) {
+        // Busca se existe algum fluxo ativado por esta palavra-chave
         const flows = await prisma.flow.findMany({
           include: { nodes: true },
         });
@@ -258,13 +268,15 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
           }
         }
 
+        // Se encontrou gatilho, inicia o fluxo para o telefone extraído
         if (matchedFlow) {
-          console.log(`🚀 [GATILHO ATIVADO] Correspondência no fluxo "${matchedFlow.name}".`);
+          console.log(`🚀 [GATILHO ATIVADO] Iniciando fluxo "${matchedFlow.name}" para o número ${phone}.`);
           await prisma.contactSession.deleteMany({ where: { phone } });
           FlowEngine.processNextNode(phone, matchedFlow.id);
           return res.status(200).json({ status: 'TRIGGER_STARTED' });
         }
 
+        // Se o cliente já está em uma conversa ativa aguardando resposta
         const activeSession = await prisma.contactSession.findUnique({
           where: { phone }
         });
