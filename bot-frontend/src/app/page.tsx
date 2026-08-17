@@ -448,13 +448,19 @@ export default function App() {
     showToast('Novo bloco adicionado!', 'info');
   };
 
-  // RADAR DE CONEXÃO COM TRATAMENTO DE REINSTANCIAÇÃO E COLD START
+  // RADAR DE CONEXÃO COM TRATAMENTO DE COLD START
   useEffect(() => {
     let isMounted = true;
+    let isChecking = false;
 
     const checkConnection = async () => {
+      // Evita sobreposição de requisições se o servidor estiver lento
+      if (isChecking) return;
+      isChecking = true;
+
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`, { timeout: 10000 });
+        // Removido o timeout de 10s para permitir que o servidor da Render acorde em paz
+        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`);
 
         if (!isMounted) return;
 
@@ -477,17 +483,21 @@ export default function App() {
         setIsConnected(false);
         setConnectedNumber("");
 
-        // Se o backend estiver acordando (cold start) ou a Evolution reiniciando
-        if (error.code === 'ECONNABORTED' || error.response?.status === 500 || error.response?.status === 502) {
-          setConnStatus("Conectando ao servidor na nuvem (Aguarde alguns segundos)...");
+        // Mostra o erro real que está vindo do servidor
+        const errorMsg = error.response?.data?.details?.message || error.response?.data?.error || error.message;
+        
+        if (error.response?.status === 500 || error.response?.status === 502) {
+          setConnStatus(`Iniciando instâncias... (${errorMsg})`);
         } else {
           setConnStatus("Erro de comunicação com o backend.");
         }
+      } finally {
+        isChecking = false;
       }
     };
 
     checkConnection();
-    const interval = setInterval(checkConnection, 5000);
+    const interval = setInterval(checkConnection, 8000); // Polling mais espaçado (8s)
     return () => {
       isMounted = false;
       clearInterval(interval);
