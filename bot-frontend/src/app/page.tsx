@@ -16,7 +16,7 @@ import ReactFlow, {
 import { 
   MessageSquare, Mic, Clock, Save, X, Type, Smartphone, QrCode, 
   CheckCircle2, Loader2, Image as ImageIcon, Film, 
-  Zap, Trash2, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered, Copy, LogOut, Sparkles, RefreshCw
+  Zap, Trash2, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered, Copy, LogOut, Sparkles, AlertTriangle, Check
 } from 'lucide-react';
 import axios from 'axios';
 import 'reactflow/dist/style.css';
@@ -24,7 +24,7 @@ import 'reactflow/dist/style.css';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://bot-backend-edsys.onrender.com";
 
 // =========================================================================
-// 1. COMPONENTE DE NÓ PERSONALIZADO (SAAS STYLE)
+// 1. COMPONENTE DE NÓ PERSONALIZADO
 // =========================================================================
 const FlowCardNode = ({ data, selected }: any) => {
   const isTrigger = data.type === 'trigger';
@@ -124,7 +124,7 @@ const FlowCardNode = ({ data, selected }: any) => {
 const nodeTypes = { custom: FlowCardNode };
 
 const defaultNodes: Node[] = [
-  { id: 'node-gatilho', type: 'custom', position: { x: 50, y: 250 }, data: { label: 'Gatilho Principais', text: 'INICIAR', type: 'trigger' } },
+  { id: 'node-gatilho', type: 'custom', position: { x: 50, y: 250 }, data: { label: 'Gatilho Principal', text: 'INICIAR', type: 'trigger' } },
   { id: 'node-msg-1', type: 'custom', position: { x: 450, y: 250 }, data: { label: 'Mensagem de Boas-Vindas', text: 'Olá! Seja bem-vindo. Como posso te ajudar hoje?', type: 'text' } }
 ];
 
@@ -164,6 +164,15 @@ export default function App() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [connectedNumber, setConnectedNumber] = useState<string>("");
 
+  // ESTADOS DE TOAST E CONFIRMAÇÃO
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; action: () => void } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   const fetchFlows = async () => {
     try {
       setLoadingFlows(true);
@@ -185,6 +194,7 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
         if (selectedNode && selectedNode.id !== 'node-gatilho') {
           setCopiedNode(selectedNode);
+          showToast('Bloco copiado!', 'info');
         }
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
@@ -196,6 +206,7 @@ export default function App() {
             selected: false,
           };
           setNodes((nds) => [...nds, newNode]);
+          showToast('Bloco colado no canvas!', 'success');
         }
       }
     };
@@ -205,12 +216,13 @@ export default function App() {
 
   const handleDeleteNodeId = useCallback((idToDelete: string) => {
     if (idToDelete === 'node-gatilho') {
-      alert('O Gatilho principal não pode ser removido.');
+      showToast('O Gatilho principal não pode ser removido.', 'error');
       return;
     }
     setNodes((nds) => nds.filter((n) => n.id !== idToDelete));
     setEdges((eds) => eds.filter((e) => e.source !== idToDelete && e.target !== idToDelete));
     if (selectedNode?.id === idToDelete) setSelectedNode(null);
+    showToast('Bloco removido!', 'info');
   }, [selectedNode]);
 
   const nodesWithActions = nodes.map(node => ({
@@ -260,19 +272,26 @@ export default function App() {
         setViewMode('builder');
       }
     } catch (error) {
-      alert('Erro ao carregar os dados do fluxo.');
+      showToast('Erro ao carregar dados do fluxo.', 'error');
     }
   };
 
-  const handleDeleteFlow = async (flowId: string, e: React.MouseEvent) => {
+  const handleDeleteFlow = (flowId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Deseja realmente apagar este fluxo?')) return;
-    try {
-      await axios.delete(`${BACKEND_URL}/api/flows/${flowId}`);
-      fetchFlows();
-    } catch (error) {
-      alert('Erro ao excluir o fluxo.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Excluir Fluxo",
+      message: "Tem certeza que deseja excluir permanentemente este fluxo? Esta ação não pode ser desfeita.",
+      action: async () => {
+        try {
+          await axios.delete(`${BACKEND_URL}/api/flows/${flowId}`);
+          showToast('Fluxo excluído com sucesso!', 'success');
+          fetchFlows();
+        } catch (error) {
+          showToast('Erro ao excluir fluxo.', 'error');
+        }
+      }
+    });
   };
 
   const handleDuplicateFlow = async (flowId: string, e: React.MouseEvent) => {
@@ -302,11 +321,12 @@ export default function App() {
         };
         const createRes = await axios.post(`${BACKEND_URL}/api/flows`, payload);
         if (createRes.data?.success) {
+          showToast('Fluxo duplicado com sucesso!', 'success');
           fetchFlows();
         }
       }
     } catch (error) {
-      alert('Erro ao duplicar o fluxo.');
+      showToast('Erro ao duplicar fluxo.', 'error');
     } finally {
       setSaving(false);
     }
@@ -326,27 +346,34 @@ export default function App() {
       if (res.data?.success && res.data?.flow) {
         setCurrentFlowId(res.data.flow.id);
       }
-      alert('🎉 Fluxo salvo com sucesso no servidor!');
+      showToast('🎉 Fluxo salvo com sucesso no servidor!', 'success');
       fetchFlows();
     } catch (error) {
-      alert('Erro ao salvar no servidor.');
+      showToast('Erro ao salvar fluxo no servidor.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!confirm('Deseja realmente desconectar este número?')) return;
-    try {
-      setConnStatus("Desconectando...");
-      await axios.get(`${BACKEND_URL}/api/whatsapp/connect?logout=true`);
-      setIsConnected(false);
-      setConnectedNumber("");
-      setQrCode(null);
-      setConnStatus("Aparelho desconectado.");
-    } catch (error) {
-      alert("Erro ao desconectar dispositivo.");
-    }
+  const handleDisconnect = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Desconectar WhatsApp",
+      message: "Deseja realmente desconectar este número? Você precisará ler o QR Code novamente para reativá-lo.",
+      action: async () => {
+        try {
+          setConnStatus("Desconectando...");
+          await axios.get(`${BACKEND_URL}/api/whatsapp/connect?logout=true`);
+          setIsConnected(false);
+          setConnectedNumber("");
+          setQrCode(null);
+          setConnStatus("Aparelho desconectado.");
+          showToast('WhatsApp desconectado com sucesso.', 'info');
+        } catch (error) {
+          showToast('Erro ao desconectar dispositivo.', 'error');
+        }
+      }
+    });
   };
 
   const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
@@ -399,6 +426,7 @@ export default function App() {
       })
     );
     setSelectedNode(null);
+    showToast('Bloco atualizado!', 'success');
   };
 
   const handleAddNode = (type: string) => {
@@ -420,11 +448,10 @@ export default function App() {
       },
     };
     setNodes((nds) => [...nds, newNode]);
+    showToast('Novo bloco adicionado!', 'info');
   };
 
-  // =========================================================================
-  // RADAR DE CONEXÃO AUTOMÁTICO VIA BACKEND
-  // =========================================================================
+  // RADAR DE CONEXÃO
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -461,7 +488,6 @@ export default function App() {
   if (viewMode === 'dashboard') {
     return (
       <div className="w-screen h-screen bg-slate-950 font-sans antialiased text-slate-100 flex flex-col overflow-hidden selection:bg-emerald-500/30">
-        {/* SaaS Header */}
         <header className="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-8 z-20">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-xl shadow-lg shadow-emerald-500/20 text-slate-950 font-black">
@@ -495,7 +521,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Dashboard Content */}
         <div className="flex-1 p-8 overflow-y-auto max-w-7xl w-full mx-auto">
           <div className="flex items-center justify-between mb-8 gap-4">
             <div className="relative flex-1 max-w-md">
@@ -580,7 +605,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Modal de Conexão com WhatsApp */}
+        {/* MODAL DE CONEXÃO COM WHATSAPP */}
         {isConnectModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-5 relative overflow-hidden">
@@ -629,6 +654,51 @@ export default function App() {
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* MODAL DE CONFIRMAÇÃO CUSTOMIZADO */}
+        {confirmModal?.isOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4 relative">
+              <div className="flex items-center gap-3 text-amber-400">
+                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <AlertTriangle size={20} />
+                </div>
+                <h3 className="font-bold text-base text-slate-100">{confirmModal.title}</h3>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">{confirmModal.message}</p>
+              <div className="flex items-center justify-end gap-2.5 mt-2">
+                <button 
+                  onClick={() => setConfirmModal(null)} 
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl text-xs font-semibold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => {
+                    confirmModal.action();
+                    setConfirmModal(null);
+                  }} 
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-red-500/20"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOAST FLUTUANTE */}
+        {toast && (
+          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${
+            toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
+            toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
+          }`}>
+            {toast.type === 'success' && <Check size={16} />}
+            {toast.type === 'error' && <AlertTriangle size={16} />}
+            {toast.type === 'info' && <Sparkles size={16} />}
+            <span className="text-xs font-semibold text-slate-100">{toast.message}</span>
           </div>
         )}
       </div>
@@ -680,7 +750,6 @@ export default function App() {
       </header>
 
       <div className="flex-1 flex relative">
-        {/* Left Toolbar */}
         <aside className="w-64 bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 p-4 flex flex-col gap-2.5 z-10">
           <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">Componentes de Fluxo</h2>
           <button onClick={() => handleAddNode('text')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><MessageSquare size={16} className="text-emerald-400"/> Texto</button>
@@ -690,7 +759,6 @@ export default function App() {
           <button onClick={() => handleAddNode('delay')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><Clock size={16} className="text-amber-400"/> Smart Delay</button>
         </aside>
 
-        {/* Canvas Area */}
         <main className="flex-1 relative bg-slate-950 w-full h-[calc(100vh-64px)]">
           <ReactFlow 
             nodes={nodesWithActions} 
@@ -712,7 +780,6 @@ export default function App() {
           </ReactFlow>
         </main>
 
-        {/* Properties Drawer */}
         <aside className={`w-80 bg-slate-900/95 backdrop-blur-xl border-l border-slate-800/80 p-6 flex flex-col justify-between z-20 absolute right-0 top-0 h-full shadow-2xl transition-all duration-300 ease-in-out ${selectedNode ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'}`}>
           <div className="flex flex-col gap-5 overflow-y-auto pb-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -772,7 +839,7 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Modal de Conexão no Canvas */}
+        {/* MODAL DE CONEXÃO NO CANVAS */}
         {isConnectModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-5 relative overflow-hidden">
@@ -821,6 +888,51 @@ export default function App() {
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* MODAL DE CONFIRMAÇÃO CUSTOMIZADO */}
+        {confirmModal?.isOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4 relative">
+              <div className="flex items-center gap-3 text-amber-400">
+                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <AlertTriangle size={20} />
+                </div>
+                <h3 className="font-bold text-base text-slate-100">{confirmModal.title}</h3>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">{confirmModal.message}</p>
+              <div className="flex items-center justify-end gap-2.5 mt-2">
+                <button 
+                  onClick={() => setConfirmModal(null)} 
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl text-xs font-semibold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => {
+                    confirmModal.action();
+                    setConfirmModal(null);
+                  }} 
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-red-500/20"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOAST FLUTUANTE */}
+        {toast && (
+          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${
+            toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
+            toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
+          }`}>
+            {toast.type === 'success' && <Check size={16} />}
+            {toast.type === 'error' && <AlertTriangle size={16} />}
+            {toast.type === 'info' && <Sparkles size={16} />}
+            <span className="text-xs font-semibold text-slate-100">{toast.message}</span>
           </div>
         )}
       </div>
