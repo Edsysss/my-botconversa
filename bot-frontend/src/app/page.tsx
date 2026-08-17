@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useCallback, useEffect } from 'react';
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  MiniMap, 
-  applyNodeChanges, 
-  applyEdgeChanges, 
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  applyNodeChanges,
+  applyEdgeChanges,
   addEdge,
   Node,
   Edge,
@@ -13,9 +13,9 @@ import ReactFlow, {
   Handle,
   Position
 } from 'reactflow';
-import { 
-  MessageSquare, Mic, Clock, Save, X, Type, Smartphone, QrCode, 
-  CheckCircle2, Loader2, Image as ImageIcon, Film, 
+import {
+  MessageSquare, Mic, Clock, Save, X, Type, Smartphone, QrCode,
+  CheckCircle2, Loader2, Image as ImageIcon, Film,
   Zap, Trash2, Plus, ArrowLeft, GitFork, Search, Edit3, ListOrdered, Copy, LogOut, Sparkles, AlertTriangle, Check
 } from 'lucide-react';
 import axios from 'axios';
@@ -33,27 +33,24 @@ const FlowCardNode = ({ data, selected }: any) => {
   const buttonsList = data.buttons || ['Opção 1', 'Opção 2'];
 
   return (
-    <div className={`relative min-w-[300px] bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border transition-all duration-200 ${
-      selected ? 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10' : 'border-slate-800/80 hover:border-slate-700'
-    }`}>
+    <div className={`relative min-w-[300px] bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border transition-all duration-200 ${selected ? 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10' : 'border-slate-800/80 hover:border-slate-700'
+      }`}>
       {!isTrigger && (
         <Handle type="target" position={Position.Left} className="!w-3.5 !h-3.5 !bg-emerald-500 !border-2 !border-slate-950 shadow-md" />
       )}
 
-      <div className={`px-4 py-3 rounded-t-2xl flex items-center justify-between border-b ${
-        isTrigger ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border-emerald-500/20' : 
-        isDelay ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20' : 
-        isButtons ? 'bg-gradient-to-r from-purple-500/10 to-indigo-500/5 border-purple-500/20' : 'bg-slate-800/40 border-slate-800'
-      }`}>
+      <div className={`px-4 py-3 rounded-t-2xl flex items-center justify-between border-b ${isTrigger ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border-emerald-500/20' :
+          isDelay ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20' :
+            isButtons ? 'bg-gradient-to-r from-purple-500/10 to-indigo-500/5 border-purple-500/20' : 'bg-slate-800/40 border-slate-800'
+        }`}>
         <div className="flex items-center gap-2.5">
-          <div className={`p-2 rounded-xl shadow-inner ${
-            isTrigger ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-            isDelay ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-            isButtons ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-            data.type === 'audio' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-            data.type === 'image' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-            data.type === 'video' ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
-          }`}>
+          <div className={`p-2 rounded-xl shadow-inner ${isTrigger ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+              isDelay ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                isButtons ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                  data.type === 'audio' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                    data.type === 'image' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                      data.type === 'video' ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
+            }`}>
             {isTrigger && <Zap size={16} />}
             {isDelay && <Clock size={16} />}
             {isButtons && <ListOrdered size={16} />}
@@ -64,10 +61,10 @@ const FlowCardNode = ({ data, selected }: any) => {
           </div>
           <span className="font-semibold text-xs tracking-wide text-slate-200 uppercase">{data.label}</span>
         </div>
-        
+
         {!isTrigger && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); if(data.onDelete) data.onDelete(); }} 
+          <button
+            onClick={(e) => { e.stopPropagation(); if (data.onDelete) data.onDelete(); }}
             className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
             title="Excluir Bloco"
           >
@@ -89,7 +86,7 @@ const FlowCardNode = ({ data, selected }: any) => {
             Aguardar {data.delayValue} {data.delayUnit === 'minutes' ? 'Minuto(s)' : 'Segundo(s)'}
           </span>
         )}
-        
+
         {!isTrigger && !isDelay && (
           <p className="line-clamp-3 text-slate-300 leading-relaxed font-normal bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60">
             {data.text || (data.mediaUrl ? '📎 Mídia Anexada' : 'Clique para configurar mensagem...')}
@@ -408,15 +405,15 @@ export default function App() {
 
           return {
             ...n,
-            data: { 
-              ...n.data, 
-              type: nodeType, 
-              label: updatedLabel, 
-              text: nodeText, 
-              mediaUrl, 
-              ptt: isPtt, 
+            data: {
+              ...n.data,
+              type: nodeType,
+              label: updatedLabel,
+              text: nodeText,
+              mediaUrl,
+              ptt: isPtt,
               waitForReply,
-              delayValue, 
+              delayValue,
               delayUnit,
               buttons: nodeType === 'buttons' ? [button1, button2] : undefined
             }
@@ -435,14 +432,14 @@ export default function App() {
       id,
       type: 'custom',
       position: { x: 500, y: 300 },
-      data: { 
-        type, 
-        label: type === 'delay' ? 'Smart Delay' : type === 'buttons' ? 'Menu de Botões' : type === 'audio' ? 'Áudio' : 'Nova Mensagem', 
-        text: '', 
-        mediaUrl: '', 
+      data: {
+        type,
+        label: type === 'delay' ? 'Smart Delay' : type === 'buttons' ? 'Menu de Botões' : type === 'audio' ? 'Áudio' : 'Nova Mensagem',
+        text: '',
+        mediaUrl: '',
         ptt: true,
         waitForReply: false,
-        delayValue: 10, 
+        delayValue: 10,
         delayUnit: 'seconds',
         buttons: type === 'buttons' ? ['Opção 1', 'Opção 2'] : undefined
       },
@@ -451,15 +448,19 @@ export default function App() {
     showToast('Novo bloco adicionado!', 'info');
   };
 
-  // RADAR DE CONEXÃO
+  // RADAR DE CONEXÃO COM TRATAMENTO DE REINSTANCIAÇÃO E COLD START
   useEffect(() => {
+    let isMounted = true;
+
     const checkConnection = async () => {
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`);
-        
+        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`, { timeout: 10000 });
+
+        if (!isMounted) return;
+
         if (res.data?.connected || res.data?.state === "open") {
-          setIsConnected(true); 
-          setConnStatus("WhatsApp Conectado!"); 
+          setIsConnected(true);
+          setConnStatus("WhatsApp Conectado!");
           setConnectedNumber(res.data?.owner || "Dispositivo Ativo");
           setQrCode(null);
         } else if (res.data?.qrcode) {
@@ -471,16 +472,26 @@ export default function App() {
           setIsConnected(false);
           setConnStatus("Gerando parâmetros de conexão...");
         }
-      } catch (error) { 
+      } catch (error: any) {
+        if (!isMounted) return;
         setIsConnected(false);
         setConnectedNumber("");
-        setConnStatus("Erro de comunicação com o backend."); 
+
+        // Se o backend estiver acordando (cold start) ou a Evolution reiniciando
+        if (error.code === 'ECONNABORTED' || error.response?.status === 500 || error.response?.status === 502) {
+          setConnStatus("Conectando ao servidor na nuvem (Aguarde alguns segundos)...");
+        } else {
+          setConnStatus("Erro de comunicação com o backend.");
+        }
       }
     };
 
     checkConnection();
     const interval = setInterval(checkConnection, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredFlows = flowsList.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -501,19 +512,18 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsConnectModalOpen(true)} 
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-xs transition-all duration-200 border shadow-sm ${
-                isConnected 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
+            <button
+              onClick={() => setIsConnectModalOpen(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-xs transition-all duration-200 border shadow-sm ${isConnected
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                   : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
-              }`}
+                }`}
             >
               {isConnected ? <CheckCircle2 size={15} /> : <Smartphone size={15} />}
               {isConnected ? `Instância Online (${connectedNumber})` : 'WhatsApp Desconectado'}
             </button>
-            <button 
-              onClick={handleCreateNewFlow} 
+            <button
+              onClick={handleCreateNewFlow}
               className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
             >
               <Plus size={16} /> Criar Novo Funil
@@ -525,12 +535,12 @@ export default function App() {
           <div className="flex items-center justify-between mb-8 gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input 
-                type="text" 
-                placeholder="Buscar funil por nome..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:border-emerald-500 outline-none transition-all shadow-inner" 
+              <input
+                type="text"
+                placeholder="Buscar funil por nome..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:border-emerald-500 outline-none transition-all shadow-inner"
               />
             </div>
             <div className="text-xs text-slate-400 font-semibold tracking-wider uppercase">
@@ -550,8 +560,8 @@ export default function App() {
               </div>
               <p className="text-slate-300 font-semibold text-sm">Nenhum funil encontrado</p>
               <p className="text-xs text-slate-500 mt-1">Crie sequências automatizadas para converter seus leads.</p>
-              <button 
-                onClick={handleCreateNewFlow} 
+              <button
+                onClick={handleCreateNewFlow}
                 className="mt-5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-all flex items-center gap-1.5"
               >
                 + Criar primeiro fluxo agora
@@ -560,9 +570,9 @@ export default function App() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredFlows.map((flow) => (
-                <div 
-                  key={flow.id} 
-                  onClick={() => handleEditFlow(flow.id)} 
+                <div
+                  key={flow.id}
+                  onClick={() => handleEditFlow(flow.id)}
                   className="bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 hover:shadow-2xl hover:shadow-emerald-500/5 group cursor-pointer relative overflow-hidden"
                 >
                   <div>
@@ -570,18 +580,18 @@ export default function App() {
                       <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
                         <Zap size={18} />
                       </div>
-                      
+
                       <div className="flex gap-1.5">
-                        <button 
-                          onClick={(e) => handleDuplicateFlow(flow.id, e)} 
-                          className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all" 
+                        <button
+                          onClick={(e) => handleDuplicateFlow(flow.id, e)}
+                          className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
                           title="Duplicar Funil"
                         >
                           <Copy size={15} />
                         </button>
-                        <button 
-                          onClick={(e) => handleDeleteFlow(flow.id, e)} 
-                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" 
+                        <button
+                          onClick={(e) => handleDeleteFlow(flow.id, e)}
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                           title="Excluir Funil"
                         >
                           <Trash2 size={15} />
@@ -609,13 +619,13 @@ export default function App() {
         {isConnectModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-5 relative overflow-hidden">
-              <button 
-                onClick={() => setIsConnectModalOpen(false)} 
+              <button
+                onClick={() => setIsConnectModalOpen(false)}
                 className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-all"
               >
                 <X size={18} />
               </button>
-              
+
               <div className="text-center mt-2">
                 <h3 className="font-bold text-lg text-slate-100">WhatsApp Conexão Instantânea</h3>
                 <p className="text-xs text-slate-400 mt-1">{connStatus}</p>
@@ -629,8 +639,8 @@ export default function App() {
                       <span className="font-bold text-sm block text-slate-100">Instância Conectada!</span>
                       <span className="text-xs text-slate-400 block mt-1">Número: {connectedNumber}</span>
                     </div>
-                    <button 
-                      onClick={handleDisconnect} 
+                    <button
+                      onClick={handleDisconnect}
                       className="mt-2 flex items-center justify-center gap-2 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2.5 rounded-xl text-xs font-semibold transition-all"
                     >
                       <LogOut size={14} /> Desconectar Aparelho
@@ -647,7 +657,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
+
               {!isConnected && (
                 <p className="text-[11px] text-slate-400 text-center leading-relaxed">
                   Abra o WhatsApp no celular &gt; Aparelhos conectados &gt; Conectar um aparelho.
@@ -669,17 +679,17 @@ export default function App() {
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">{confirmModal.message}</p>
               <div className="flex items-center justify-end gap-2.5 mt-2">
-                <button 
-                  onClick={() => setConfirmModal(null)} 
+                <button
+                  onClick={() => setConfirmModal(null)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl text-xs font-semibold transition-all"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     confirmModal.action();
                     setConfirmModal(null);
-                  }} 
+                  }}
                   className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-red-500/20"
                 >
                   Confirmar
@@ -691,10 +701,9 @@ export default function App() {
 
         {/* TOAST FLUTUANTE */}
         {toast && (
-          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${
-            toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
-            toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
-          }`}>
+          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
+              toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
+            }`}>
             {toast.type === 'success' && <Check size={16} />}
             {toast.type === 'error' && <AlertTriangle size={16} />}
             {toast.type === 'info' && <Sparkles size={16} />}
@@ -710,38 +719,37 @@ export default function App() {
       {/* Canvas Header */}
       <header className="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-6 z-10">
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => { setViewMode('dashboard'); fetchFlows(); }} 
-            className="p-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl transition-all border border-slate-700/50" 
+          <button
+            onClick={() => { setViewMode('dashboard'); fetchFlows(); }}
+            className="p-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl transition-all border border-slate-700/50"
             title="Voltar ao Dashboard"
           >
             <ArrowLeft size={18} />
           </button>
           <div className="flex flex-col">
-            <input 
-              type="text" 
-              value={flowName} 
-              onChange={(e) => setFlowName(e.target.value)} 
-              className="bg-transparent font-bold text-base text-slate-100 outline-none border-b border-transparent hover:border-slate-700 focus:border-emerald-500 transition-all" 
+            <input
+              type="text"
+              value={flowName}
+              onChange={(e) => setFlowName(e.target.value)}
+              className="bg-transparent font-bold text-base text-slate-100 outline-none border-b border-transparent hover:border-slate-700 focus:border-emerald-500 transition-all"
             />
             <span className="text-[11px] text-slate-400">Edição em Tempo Real • Canvas ReactFlow</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsConnectModalOpen(true)} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-xs transition-all border shadow-sm ${
-              isConnected 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
+          <button
+            onClick={() => setIsConnectModalOpen(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-xs transition-all border shadow-sm ${isConnected
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                 : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
-            }`}
+              }`}
           >
             {isConnected ? <CheckCircle2 size={15} /> : <Smartphone size={15} />}
             {isConnected ? `Conectado: ${connectedNumber}` : 'WhatsApp Desconectado'}
           </button>
-          <button 
-            onClick={handleSaveFlow} 
-            disabled={saving} 
+          <button
+            onClick={handleSaveFlow}
+            disabled={saving}
             className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20 border-0 active:scale-95 cursor-pointer"
           >
             <Save size={15} /> {saving ? 'Salvando...' : 'Salvar Funil'}
@@ -752,27 +760,27 @@ export default function App() {
       <div className="flex-1 flex relative">
         <aside className="w-64 bg-slate-900/60 backdrop-blur-md border-r border-slate-800/80 p-4 flex flex-col gap-2.5 z-10">
           <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">Componentes de Fluxo</h2>
-          <button onClick={() => handleAddNode('text')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><MessageSquare size={16} className="text-emerald-400"/> Texto</button>
-          <button onClick={() => handleAddNode('buttons')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><ListOrdered size={16} className="text-purple-400"/> Botões Interativos</button>
-          <button onClick={() => handleAddNode('image')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><ImageIcon size={16} className="text-blue-400"/> Imagem</button>
-          <button onClick={() => handleAddNode('audio')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><Mic size={16} className="text-pink-400"/> Áudio PTT</button>
-          <button onClick={() => handleAddNode('delay')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><Clock size={16} className="text-amber-400"/> Smart Delay</button>
+          <button onClick={() => handleAddNode('text')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><MessageSquare size={16} className="text-emerald-400" /> Texto</button>
+          <button onClick={() => handleAddNode('buttons')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><ListOrdered size={16} className="text-purple-400" /> Botões Interativos</button>
+          <button onClick={() => handleAddNode('image')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><ImageIcon size={16} className="text-blue-400" /> Imagem</button>
+          <button onClick={() => handleAddNode('audio')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><Mic size={16} className="text-pink-400" /> Áudio PTT</button>
+          <button onClick={() => handleAddNode('delay')} className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl text-slate-200 text-xs font-semibold border border-slate-700/40 transition-all hover:border-slate-600 shadow-sm"><Clock size={16} className="text-amber-400" /> Smart Delay</button>
         </aside>
 
         <main className="flex-1 relative bg-slate-950 w-full h-[calc(100vh-64px)]">
-          <ReactFlow 
-            nodes={nodesWithActions} 
-            edges={edges} 
-            onNodesChange={onNodesChange} 
-            onEdgesChange={onEdgesChange} 
-            onConnect={onConnect} 
-            onNodeClick={onNodeClick} 
-            nodeTypes={nodeTypes} 
+          <ReactFlow
+            nodes={nodesWithActions}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
             fitView
-            connectionRadius={150} 
-            snapToGrid={true}      
-            snapGrid={[20, 20]}    
-            deleteKeyCode={['Backspace', 'Delete']} 
+            connectionRadius={150}
+            snapToGrid={true}
+            snapGrid={[20, 20]}
+            deleteKeyCode={['Backspace', 'Delete']}
           >
             <Background color="#334155" gap={20} size={1.2} variant={BackgroundVariant.Dots} />
             <Controls className="bg-slate-900 border-slate-800 fill-slate-300" />
@@ -843,13 +851,13 @@ export default function App() {
         {isConnectModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-5 relative overflow-hidden">
-              <button 
-                onClick={() => setIsConnectModalOpen(false)} 
+              <button
+                onClick={() => setIsConnectModalOpen(false)}
                 className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-all"
               >
                 <X size={18} />
               </button>
-              
+
               <div className="text-center mt-2">
                 <h3 className="font-bold text-lg text-slate-100">WhatsApp Conexão Instantânea</h3>
                 <p className="text-xs text-slate-400 mt-1">{connStatus}</p>
@@ -863,8 +871,8 @@ export default function App() {
                       <span className="font-bold text-sm block text-slate-100">Instância Conectada!</span>
                       <span className="text-xs text-slate-400 block mt-1">Número: {connectedNumber}</span>
                     </div>
-                    <button 
-                      onClick={handleDisconnect} 
+                    <button
+                      onClick={handleDisconnect}
                       className="mt-2 flex items-center justify-center gap-2 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2.5 rounded-xl text-xs font-semibold transition-all"
                     >
                       <LogOut size={14} /> Desconectar Aparelho
@@ -881,7 +889,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
+
               {!isConnected && (
                 <p className="text-[11px] text-slate-400 text-center leading-relaxed">
                   Abra o WhatsApp no celular &gt; Aparelhos conectados &gt; Conectar um aparelho.
@@ -903,17 +911,17 @@ export default function App() {
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">{confirmModal.message}</p>
               <div className="flex items-center justify-end gap-2.5 mt-2">
-                <button 
-                  onClick={() => setConfirmModal(null)} 
+                <button
+                  onClick={() => setConfirmModal(null)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl text-xs font-semibold transition-all"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     confirmModal.action();
                     setConfirmModal(null);
-                  }} 
+                  }}
                   className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-red-500/20"
                 >
                   Confirmar
@@ -925,10 +933,9 @@ export default function App() {
 
         {/* TOAST FLUTUANTE */}
         {toast && (
-          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${
-            toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
-            toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
-          }`}>
+          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
+              toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
+            }`}>
             {toast.type === 'success' && <Check size={16} />}
             {toast.type === 'error' && <AlertTriangle size={16} />}
             {toast.type === 'info' && <Sparkles size={16} />}
