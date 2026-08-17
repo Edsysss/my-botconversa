@@ -21,7 +21,7 @@ import {
 import axios from 'axios';
 import 'reactflow/dist/style.css';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://bot-backend-edsys.onrender.com";
+const BACKEND_URL = "https://bot-backend-edsys.onrender.com";
 
 // =========================================================================
 // 1. COMPONENTE DE NÓ PERSONALIZADO
