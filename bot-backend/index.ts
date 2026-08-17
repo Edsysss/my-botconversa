@@ -296,6 +296,82 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
   }
 });
 
+// Rota para automatizar a criação e checagem da instância
+// Rota para automatizar a checagem, criação e envio do QR Code
+app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
+  const instanceName = process.env.INSTANCE_NAME || 'bot_oficial_v3';
+  const evoUrl = process.env.EVOLUTION_API_URL || process.env.EVO_API_URL || 'https://my-botconversa.onrender.com';
+  const apiKey = process.env.EVOLUTION_API_KEY || process.env.EVO_API_KEY || 'Ed82922545';
+
+  const headers = {
+    'apikey': apiKey,
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    // 1. Se o usuário solicitou logout
+    if (req.query.logout === 'true') {
+      await axios.delete(`${evoUrl}/instance/logout/${instanceName}`, { headers });
+      return res.status(200).json({ success: true, message: 'Desconectado com sucesso' });
+    }
+
+    // 2. Tenta buscar a conexão atual da instância
+    const statusRes = await axios.get(`${evoUrl}/instance/connectionState/${instanceName}`, { headers });
+    
+    if (statusRes.data?.instance?.state === 'open') {
+      let ownerNumber = "Conectado";
+      try {
+        const fetchRes = await axios.get(`${evoUrl}/instance/fetchInstances?instanceName=${instanceName}`, { headers });
+        if (fetchRes.data && fetchRes.data.length > 0) {
+          const owner = fetchRes.data[0].ownerJid || fetchRes.data[0].instance?.ownerJid;
+          if (owner) ownerNumber = owner.split('@')[0];
+        }
+      } catch (e) {}
+
+      return res.status(200).json({ success: true, state: 'open', connected: true, owner: ownerNumber });
+    }
+
+    // 3. Se não estiver open, solicita o QR Code
+    const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers });
+    return res.status(200).json({ 
+      success: true, 
+      state: 'connecting', 
+      qrcode: qrRes.data?.base64 || qrRes.data?.qrcode?.base64 
+    });
+
+  } catch (error: any) {
+    // 4. Se a instância não existir (404), cria ela automaticamente
+    if (error?.response?.status === 404) {
+      try {
+        console.log(`🤖 Criando instância ${instanceName} automaticamente...`);
+        await axios.post(`${evoUrl}/instance/create`, {
+          instanceName: instanceName,
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS",
+          rejectCall: false,
+          groupsIgnore: true,
+          alwaysOnline: true,
+          readMessages: false,
+          readStatus: false,
+          syncFullHistory: false
+        }, { headers });
+
+        const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers });
+        return res.status(200).json({ 
+          success: true, 
+          state: 'connecting', 
+          qrcode: qrRes.data?.base64 || qrRes.data?.qrcode?.base64 
+        });
+
+      } catch (createError: any) {
+        return res.status(500).json({ success: false, error: 'Erro ao criar instância no WhatsApp.' });
+      }
+    }
+
+    return res.status(500).json({ success: false, error: 'Erro ao conectar com a Evolution API.' });
+  }
+});
+
 const PORT = process.env.PORT || 3333;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta http://localhost:${PORT}`);
