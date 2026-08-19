@@ -459,8 +459,8 @@ export default function App() {
       isChecking = true;
 
       try {
-        // Timeout de 15s: tempo suficiente para acordar a Render, mas evita travamento infinito
-        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`, { timeout: 15000 });
+        // Aumentamos o timeout do front-end para 45s (espera o backend e a API acordarem tranquilamente)
+        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`, { timeout: 45000 });
 
         if (!isMounted) return;
 
@@ -484,9 +484,10 @@ export default function App() {
         setConnectedNumber("");
 
         if (error.code === 'ECONNABORTED') {
-          setConnStatus("Acordando servidor na nuvem (Aguarde)...");
+          setConnStatus("Acordando servidor na nuvem (Isso pode levar até 1 minuto)...");
         } else {
-          const errorMsg = error.response?.data?.details?.message || error.response?.data?.error || error.message;
+          // Correção: Agora lê os 'details' de erro corretamente
+          const errorMsg = error.response?.data?.details || error.response?.data?.error || error.message;
           setConnStatus(`Tentando conectar... (${errorMsg})`);
         }
       } finally {

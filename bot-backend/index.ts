@@ -310,18 +310,18 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
 
   try {
     if (req.query.logout === 'true') {
-      await axios.delete(`${evoUrl}/instance/logout/${instanceName}`, { headers, timeout: 10000 });
+      await axios.delete(`${evoUrl}/instance/logout/${instanceName}`, { headers, timeout: 40000 });
       return res.status(200).json({ success: true, message: 'Desconectado com sucesso' });
     }
 
-    // Busca APENAS o estado da conexão para ser extremamente rápido (corta o delay)
-    const statusRes = await axios.get(`${evoUrl}/instance/connectionState/${instanceName}`, { headers, timeout: 10000 });
+    // Aumentamos o timeout para 40s para garantir que a Evolution API tenha tempo de acordar
+    const statusRes = await axios.get(`${evoUrl}/instance/connectionState/${instanceName}`, { headers, timeout: 40000 });
     
     if (statusRes.data?.instance?.state === 'open') {
       return res.status(200).json({ success: true, state: 'open', connected: true, owner: "Instância Conectada" });
     }
 
-    const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 10000 });
+    const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 40000 });
     return res.status(200).json({ 
       success: true, 
       state: 'connecting', 
@@ -342,7 +342,7 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
           readMessages: false,
           readStatus: false,
           syncFullHistory: false
-        }, { headers, timeout: 15000 });
+        }, { headers, timeout: 40000 });
 
         // Configura webhook nos bastidores silenciosamente
         await axios.post(`${evoUrl}/webhook/set/${instanceName}`, {
@@ -353,9 +353,9 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
             base64: false,
             events: ["MESSAGES_UPSERT"]
           }
-        }, { headers, timeout: 10000 }).catch(e => console.log('Aviso: Falha menor no webhook', e.message));
+        }, { headers, timeout: 40000 }).catch(e => console.log('Aviso: Falha menor no webhook', e.message));
 
-        const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 10000 });
+        const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 40000 });
         return res.status(200).json({ 
           success: true, 
           state: 'connecting', 
