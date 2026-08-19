@@ -40,16 +40,16 @@ const FlowCardNode = ({ data, selected }: any) => {
       )}
 
       <div className={`px-4 py-3 rounded-t-2xl flex items-center justify-between border-b ${isTrigger ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border-emerald-500/20' :
-          isDelay ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20' :
-            isButtons ? 'bg-gradient-to-r from-purple-500/10 to-indigo-500/5 border-purple-500/20' : 'bg-slate-800/40 border-slate-800'
+        isDelay ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-500/20' :
+          isButtons ? 'bg-gradient-to-r from-purple-500/10 to-indigo-500/5 border-purple-500/20' : 'bg-slate-800/40 border-slate-800'
         }`}>
         <div className="flex items-center gap-2.5">
           <div className={`p-2 rounded-xl shadow-inner ${isTrigger ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-              isDelay ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                isButtons ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                  data.type === 'audio' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                    data.type === 'image' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                      data.type === 'video' ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
+            isDelay ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+              isButtons ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                data.type === 'audio' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                  data.type === 'image' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                    data.type === 'video' ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
             }`}>
             {isTrigger && <Zap size={16} />}
             {isDelay && <Clock size={16} />}
@@ -483,12 +483,14 @@ export default function App() {
         setIsConnected(false);
         setConnectedNumber("");
 
-        if (error.code === 'ECONNABORTED') {
-          setConnStatus("Acordando servidor na nuvem (Isso pode levar até 1 minuto)...");
+        const statusCode = error.response?.status;
+
+        // Se for timeout ou erro 502/503/504 da Render (Servidor dormindo)
+        if (error.code === 'ECONNABORTED' || statusCode === 502 || statusCode === 503 || statusCode === 504) {
+          setConnStatus("Acordando servidores na nuvem (Isso pode levar até 1 minuto)...");
         } else {
-          // Correção: Agora lê os 'details' de erro corretamente
           const errorMsg = error.response?.data?.details || error.response?.data?.error || error.message;
-          setConnStatus(`Tentando conectar... (${errorMsg})`);
+          setConnStatus(`Aguardando serviços... (${errorMsg})`);
         }
       } finally {
         isChecking = false;
@@ -524,8 +526,8 @@ export default function App() {
             <button
               onClick={() => setIsConnectModalOpen(true)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-xs transition-all duration-200 border shadow-sm ${isConnected
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                  : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
                 }`}
             >
               {isConnected ? <CheckCircle2 size={15} /> : <Smartphone size={15} />}
@@ -711,7 +713,7 @@ export default function App() {
         {/* TOAST FLUTUANTE */}
         {toast && (
           <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
-              toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
+            toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
             }`}>
             {toast.type === 'success' && <Check size={16} />}
             {toast.type === 'error' && <AlertTriangle size={16} />}
@@ -749,8 +751,8 @@ export default function App() {
           <button
             onClick={() => setIsConnectModalOpen(true)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-xs transition-all border shadow-sm ${isConnected
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+              : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
               }`}
           >
             {isConnected ? <CheckCircle2 size={15} /> : <Smartphone size={15} />}
@@ -943,7 +945,7 @@ export default function App() {
         {/* TOAST FLUTUANTE */}
         {toast && (
           <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-slate-900/90 border-emerald-500/30 text-emerald-400' :
-              toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
+            toast.type === 'error' ? 'bg-slate-900/90 border-red-500/30 text-red-400' : 'bg-slate-900/90 border-blue-500/30 text-blue-400'
             }`}>
             {toast.type === 'success' && <Check size={16} />}
             {toast.type === 'error' && <AlertTriangle size={16} />}

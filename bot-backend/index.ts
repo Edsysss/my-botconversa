@@ -318,7 +318,19 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
     const statusRes = await axios.get(`${evoUrl}/instance/connectionState/${instanceName}`, { headers, timeout: 40000 });
     
     if (statusRes.data?.instance?.state === 'open') {
-      return res.status(200).json({ success: true, state: 'open', connected: true, owner: "Instância Conectada" });
+      let ownerNumber = "Ativa";
+      try {
+        // Busca o número real do WhatsApp com um timeout rápido de 5s para não travar o sistema
+        const fetchRes = await axios.get(`${evoUrl}/instance/fetchInstances?instanceName=${instanceName}`, { headers, timeout: 5000 });
+        if (fetchRes.data && fetchRes.data.length > 0) {
+          const owner = fetchRes.data[0].ownerJid || fetchRes.data[0].instance?.ownerJid;
+          if (owner) ownerNumber = owner.split('@')[0]; // Pega apenas os números (ex: 5511999999999)
+        }
+      } catch (e) {
+        console.log('Aviso: Não foi possível buscar o número do aparelho a tempo.');
+      }
+
+      return res.status(200).json({ success: true, state: 'open', connected: true, owner: ownerNumber });
     }
 
     const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 40000 });
