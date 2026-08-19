@@ -300,7 +300,6 @@ app.post('/api/webhook/whatsapp', async (req: Request, res: Response) => {
 // Rota para automatizar a checagem, criação e envio do QR Code
 app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
   const instanceName = (process.env.INSTANCE_NAME || 'bot_oficial_v3').trim();
-  // Garante que a URL não termine com barra /
   let evoUrl = (process.env.EVOLUTION_API_URL || process.env.EVO_API_URL || 'https://my-botconversa.onrender.com').trim().replace(/\/$/, '');
   const apiKey = (process.env.EVOLUTION_API_KEY || process.env.EVO_API_KEY || 'Ed82922545').trim();
 
@@ -311,26 +310,18 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
 
   try {
     if (req.query.logout === 'true') {
-      await axios.delete(`${evoUrl}/instance/logout/${instanceName}`, { headers });
+      await axios.delete(`${evoUrl}/instance/logout/${instanceName}`, { headers, timeout: 10000 });
       return res.status(200).json({ success: true, message: 'Desconectado com sucesso' });
     }
 
-    const statusRes = await axios.get(`${evoUrl}/instance/connectionState/${instanceName}`, { headers });
+    // Busca APENAS o estado da conexão para ser extremamente rápido (corta o delay)
+    const statusRes = await axios.get(`${evoUrl}/instance/connectionState/${instanceName}`, { headers, timeout: 10000 });
     
     if (statusRes.data?.instance?.state === 'open') {
-      let ownerNumber = "Conectado";
-      try {
-        const fetchRes = await axios.get(`${evoUrl}/instance/fetchInstances?instanceName=${instanceName}`, { headers });
-        if (fetchRes.data && fetchRes.data.length > 0) {
-          const owner = fetchRes.data[0].ownerJid || fetchRes.data[0].instance?.ownerJid;
-          if (owner) ownerNumber = owner.split('@')[0];
-        }
-      } catch (e) {}
-
-      return res.status(200).json({ success: true, state: 'open', connected: true, owner: ownerNumber });
+      return res.status(200).json({ success: true, state: 'open', connected: true, owner: "Instância Conectada" });
     }
 
-    const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers });
+    const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 10000 });
     return res.status(200).json({ 
       success: true, 
       state: 'connecting', 
@@ -351,9 +342,20 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
           readMessages: false,
           readStatus: false,
           syncFullHistory: false
-        }, { headers });
+        }, { headers, timeout: 15000 });
 
-        const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers });
+        // Configura webhook nos bastidores silenciosamente
+        await axios.post(`${evoUrl}/webhook/set/${instanceName}`, {
+          webhook: {
+            enabled: true,
+            url: "https://bot-backend-edsys.onrender.com/api/webhook/whatsapp",
+            byEvents: false,
+            base64: false,
+            events: ["MESSAGES_UPSERT"]
+          }
+        }, { headers, timeout: 10000 }).catch(e => console.log('Aviso: Falha menor no webhook', e.message));
+
+        const qrRes = await axios.get(`${evoUrl}/instance/connect/${instanceName}`, { headers, timeout: 10000 });
         return res.status(200).json({ 
           success: true, 
           state: 'connecting', 
@@ -361,15 +363,14 @@ app.get('/api/whatsapp/connect', async (req: Request, res: Response) => {
         });
 
       } catch (createError: any) {
-        return res.status(500).json({ success: false, error: 'Erro ao criar instância', details: createError?.response?.data || createError.message });
+        return res.status(500).json({ success: false, error: 'Erro ao criar instância', details: createError.message });
       }
     }
 
-    // Retorna o erro real no JSON para o front-end ler
     return res.status(500).json({ 
       success: false, 
-      error: 'Erro na Evolution API', 
-      details: error?.response?.data || error.message 
+      error: 'Erro de comunicacao com a Evolution', 
+      details: error.message 
     });
   }
 });

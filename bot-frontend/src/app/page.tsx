@@ -448,19 +448,19 @@ export default function App() {
     showToast('Novo bloco adicionado!', 'info');
   };
 
-  // RADAR DE CONEXÃO COM TRATAMENTO DE COLD START
+  // RADAR DE CONEXÃO COM TRATAMENTO DE COLD START E TIMEOUT SEGURO
   useEffect(() => {
     let isMounted = true;
     let isChecking = false;
 
     const checkConnection = async () => {
-      // Evita sobreposição de requisições se o servidor estiver lento
+      // Se a verificação anterior ainda não terminou, aborta esta para não encavalar
       if (isChecking) return;
       isChecking = true;
 
       try {
-        // Removido o timeout de 10s para permitir que o servidor da Render acorde em paz
-        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`);
+        // Timeout de 15s: tempo suficiente para acordar a Render, mas evita travamento infinito
+        const res = await axios.get(`${BACKEND_URL}/api/whatsapp/connect`, { timeout: 15000 });
 
         if (!isMounted) return;
 
@@ -483,13 +483,11 @@ export default function App() {
         setIsConnected(false);
         setConnectedNumber("");
 
-        // Mostra o erro real que está vindo do servidor
-        const errorMsg = error.response?.data?.details?.message || error.response?.data?.error || error.message;
-        
-        if (error.response?.status === 500 || error.response?.status === 502) {
-          setConnStatus(`Iniciando instâncias... (${errorMsg})`);
+        if (error.code === 'ECONNABORTED') {
+          setConnStatus("Acordando servidor na nuvem (Aguarde)...");
         } else {
-          setConnStatus("Erro de comunicação com o backend.");
+          const errorMsg = error.response?.data?.details?.message || error.response?.data?.error || error.message;
+          setConnStatus(`Tentando conectar... (${errorMsg})`);
         }
       } finally {
         isChecking = false;
@@ -497,7 +495,7 @@ export default function App() {
     };
 
     checkConnection();
-    const interval = setInterval(checkConnection, 8000); // Polling mais espaçado (8s)
+    const interval = setInterval(checkConnection, 8000);
     return () => {
       isMounted = false;
       clearInterval(interval);
